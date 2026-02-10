@@ -467,7 +467,12 @@ function Dashboard() {
                   const trigConfig = triggerConfig[task.triggerType] || triggerConfig.unknown;
                   
                   return (
-                    <div key={task.id} className="p-4 hover:bg-gray-800/50 transition-colors">
+                    <Link 
+                      key={task.id} 
+                      to="/tasks/$taskId"
+                      params={{ taskId: task.id }}
+                      className="block p-4 hover:bg-gray-800/50 transition-colors cursor-pointer"
+                    >
                       <div className="flex items-start gap-4">
                         <div className={`w-10 h-10 rounded-lg ${catConfig.color}/20 flex items-center justify-center text-xl shrink-0`}>
                           {catConfig.icon}
@@ -511,7 +516,7 @@ function Dashboard() {
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   );
                 })}
               </div>
