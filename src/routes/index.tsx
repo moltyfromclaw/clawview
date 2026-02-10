@@ -614,121 +614,117 @@ function Dashboard() {
 
         {/* Team Tab */}
         {activeTab === 'team' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold">Your Agents</h2>
-                <p className="text-gray-400 text-sm mt-1">
-                  Manage and monitor your OpenClaw agents
-                </p>
+          <div className="space-y-8">
+            {/* Agents Section */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <span>🖥️</span> Agents
+                  </h2>
+                  <p className="text-gray-400 text-sm">Persistent OpenClaw gateways</p>
+                </div>
+                {agents.length > 0 && (
+                  <button
+                    onClick={() => setShowAddAgentModal(true)}
+                    className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 rounded-lg flex items-center gap-1.5 transition-colors"
+                  >
+                    ➕ Add Agent
+                  </button>
+                )}
               </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setShowSpawnModal(true)}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg flex items-center gap-2 transition-colors"
-                >
-                  🤖 Hire Contractor
-                </button>
-                <button
-                  onClick={() => setShowAddAgentModal(true)}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg flex items-center gap-2 transition-colors"
-                >
-                  ➕ Add Agent
-                </button>
-              </div>
-            </div>
 
-            {agents.length === 0 ? (
-              <div className="bg-gray-900 rounded-xl border border-gray-800 p-12 text-center">
-                <div className="text-6xl mb-4">🦞</div>
-                <h3 className="text-xl font-semibold mb-2">No agents yet</h3>
-                <p className="text-gray-400 mb-6 max-w-md mx-auto">
-                  Add your first OpenClaw agent to start monitoring and managing your AI workforce.
-                </p>
+              {agents.length === 0 ? (
                 <button
                   onClick={() => setShowAddAgentModal(true)}
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-medium transition-colors"
+                  className="w-full bg-gray-900/50 rounded-xl border-2 border-dashed border-gray-700 p-8 text-center hover:border-gray-600 hover:bg-gray-900 transition-all group"
                 >
-                  Add Your First Agent
+                  <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">🖥️</div>
+                  <h3 className="text-lg font-medium text-gray-300 mb-1">No agents connected</h3>
+                  <p className="text-gray-500 text-sm mb-3">
+                    Connect your OpenClaw gateways to monitor and manage them here
+                  </p>
+                  <span className="inline-flex items-center gap-1.5 text-blue-400 text-sm font-medium">
+                    ➕ Add your first agent
+                  </span>
                 </button>
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                {/* Group agents by team */}
-                {Object.entries(
-                  agents.reduce((acc, agent) => {
-                    const team = agent.team || 'Ungrouped';
-                    if (!acc[team]) acc[team] = [];
-                    acc[team].push(agent);
-                    return acc;
-                  }, {} as Record<string, Agent[]>)
-                ).map(([team, teamAgents]) => (
-                  <div key={team} className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-                    <div className="p-4 border-b border-gray-800 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">👥</span>
-                        <h3 className="font-semibold">{team}</h3>
-                        <span className="px-2 py-0.5 bg-gray-800 rounded text-xs text-gray-400">
-                          {teamAgents.length} agent{teamAgents.length !== 1 ? 's' : ''}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="divide-y divide-gray-800">
-                      {teamAgents.map(agent => (
-                        <div key={agent.id} className="p-4 hover:bg-gray-800/50 transition-colors">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-gray-800 flex items-center justify-center text-2xl shrink-0">
-                              {agent.avatar}
+              ) : (
+                <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+                  <div className="divide-y divide-gray-800">
+                    {agents.map(agent => (
+                      <div key={agent.id} className="p-4 hover:bg-gray-800/50 transition-colors">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-xl bg-gray-800 flex items-center justify-center text-2xl shrink-0">
+                            {agent.avatar}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium text-white">{agent.name}</h4>
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${
+                                agent.gatewayStatus === 'online'
+                                  ? 'bg-green-500/20 text-green-400'
+                                  : agent.gatewayStatus === 'error'
+                                  ? 'bg-red-500/20 text-red-400'
+                                  : 'bg-gray-500/20 text-gray-400'
+                              }`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${
+                                  agent.gatewayStatus === 'online' ? 'bg-green-400' : agent.gatewayStatus === 'error' ? 'bg-red-400' : 'bg-gray-400'
+                                }`}></span>
+                                {agent.gatewayStatus}
+                              </span>
+                              {agent.status === 'active' && (
+                                <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full text-xs">active</span>
+                              )}
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <h4 className="font-medium text-white">{agent.name}</h4>
-                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${
-                                  agent.gatewayStatus === 'online'
-                                    ? 'bg-green-500/20 text-green-400'
-                                    : agent.gatewayStatus === 'error'
-                                    ? 'bg-red-500/20 text-red-400'
-                                    : 'bg-gray-500/20 text-gray-400'
-                                }`}>
-                                  <span className={`w-1.5 h-1.5 rounded-full ${
-                                    agent.gatewayStatus === 'online'
-                                      ? 'bg-green-400'
-                                      : agent.gatewayStatus === 'error'
-                                      ? 'bg-red-400'
-                                      : 'bg-gray-400'
-                                  }`}></span>
-                                  {agent.gatewayStatus}
-                                </span>
-                                {agent.status === 'active' && (
-                                  <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full text-xs">
-                                    active
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-sm text-gray-400 mt-0.5">{agent.role}</p>
-                            </div>
-                            <div className="text-right shrink-0">
-                              <div className="text-sm text-gray-400">{agent.taskCount} tasks</div>
-                              <div className="text-green-400 text-sm">{formatCost(agent.totalCost)}</div>
-                            </div>
+                            <p className="text-sm text-gray-400 mt-0.5">{agent.role || 'OpenClaw Gateway'}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="text-sm text-gray-400">{agent.taskCount} tasks</div>
+                            <div className="text-green-400 text-sm">{formatCost(agent.totalCost)}</div>
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+              )}
+            </div>
+
+            {/* Contractors Section */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <span>🤖</span> Contractors
+                  </h2>
+                  <p className="text-gray-400 text-sm">On-demand sub-agents for specific tasks</p>
+                </div>
               </div>
-            )}
+
+              {/* Empty state for contractors - always show since we don't track them yet */}
+              <button
+                onClick={() => setShowSpawnModal(true)}
+                className="w-full bg-gray-900/50 rounded-xl border-2 border-dashed border-gray-700 p-8 text-center hover:border-purple-600/50 hover:bg-gray-900 transition-all group"
+              >
+                <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">🤖</div>
+                <h3 className="text-lg font-medium text-gray-300 mb-1">No contractors running</h3>
+                <p className="text-gray-500 text-sm mb-3">
+                  Spawn temporary agents to handle specific tasks like research, coding, or lead gen
+                </p>
+                <span className="inline-flex items-center gap-1.5 text-purple-400 text-sm font-medium">
+                  🚀 Hire a contractor
+                </span>
+              </button>
+            </div>
           </div>
         )}
       </main>
 
       {/* Add Agent Modal */}
       <AddAgentModal
-        isOpen={showAddAgentModal}
-        onClose={() => setShowAddAgentModal(false)}
+        open={showAddAgentModal}
+        onOpenChange={setShowAddAgentModal}
         onAgentAdded={() => {
-          // Refresh agents list
           fetch('/api/agents')
             .then(res => res.json())
             .then(data => setAgents(data.agents || []));
@@ -737,11 +733,10 @@ function Dashboard() {
 
       {/* Spawn Agent Modal */}
       <SpawnAgentModal
-        isOpen={showSpawnModal}
-        onClose={() => setShowSpawnModal(false)}
+        open={showSpawnModal}
+        onOpenChange={setShowSpawnModal}
         onAgentSpawned={(sessionKey) => {
           console.log('Agent spawned:', sessionKey);
-          // Refresh agents list
           fetch('/api/agents')
             .then(res => res.json())
             .then(data => setAgents(data.agents || []));

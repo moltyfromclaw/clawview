@@ -12,3 +12,40 @@ body {
   @apply bg-gray-950 text-white antialiased;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
+
+/* Dialog animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes zoomIn {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes zoomOut {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+}
+
+[data-state="open"].animate-in {
+  animation: fadeIn 150ms ease-out;
+}
+
+[data-state="closed"].animate-out {
+  animation: fadeOut 100ms ease-in;
+}
+
+[data-state="open"].zoom-in-95 {
+  animation: zoomIn 150ms ease-out;
+}
+
+[data-state="closed"].zoom-out-95 {
+  animation: zoomOut 100ms ease-in;
+}
