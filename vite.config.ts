@@ -8,7 +8,7 @@ import { fileURLToPath, URL } from 'url'
 
 const config = defineConfig({
   server: {
-    allowedHosts: ['ms-mac-mini.tail901772.ts.net', 'localhost'],
+    allowedHosts: ['ms-mac-mini.tail901772.ts.net', 'molty.viewholly.com', 'localhost'],
   },
   resolve: {
     alias: {
