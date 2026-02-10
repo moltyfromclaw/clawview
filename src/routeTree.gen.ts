@@ -13,6 +13,7 @@ import { Route as StandupRouteImport } from './routes/standup'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiTasksRouteImport } from './routes/api/tasks'
 import { Route as ApiStatsRouteImport } from './routes/api/stats'
+import { Route as ApiSpawnRouteImport } from './routes/api/spawn'
 import { Route as ApiInsightsRouteImport } from './routes/api/insights'
 import { Route as ApiAgentsRouteImport } from './routes/api/agents'
 import { Route as ApiRealtimeSessionRouteImport } from './routes/api/realtime/session'
@@ -37,6 +38,11 @@ const ApiStatsRoute = ApiStatsRouteImport.update({
   path: '/api/stats',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSpawnRoute = ApiSpawnRouteImport.update({
+  id: '/api/spawn',
+  path: '/api/spawn',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiInsightsRoute = ApiInsightsRouteImport.update({
   id: '/api/insights',
   path: '/api/insights',
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/standup': typeof StandupRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/insights': typeof ApiInsightsRoute
+  '/api/spawn': typeof ApiSpawnRoute
   '/api/stats': typeof ApiStatsRoute
   '/api/tasks': typeof ApiTasksRoute
   '/api/realtime/session': typeof ApiRealtimeSessionRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/standup': typeof StandupRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/insights': typeof ApiInsightsRoute
+  '/api/spawn': typeof ApiSpawnRoute
   '/api/stats': typeof ApiStatsRoute
   '/api/tasks': typeof ApiTasksRoute
   '/api/realtime/session': typeof ApiRealtimeSessionRoute
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/standup': typeof StandupRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/insights': typeof ApiInsightsRoute
+  '/api/spawn': typeof ApiSpawnRoute
   '/api/stats': typeof ApiStatsRoute
   '/api/tasks': typeof ApiTasksRoute
   '/api/realtime/session': typeof ApiRealtimeSessionRoute
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/standup'
     | '/api/agents'
     | '/api/insights'
+    | '/api/spawn'
     | '/api/stats'
     | '/api/tasks'
     | '/api/realtime/session'
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/standup'
     | '/api/agents'
     | '/api/insights'
+    | '/api/spawn'
     | '/api/stats'
     | '/api/tasks'
     | '/api/realtime/session'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/standup'
     | '/api/agents'
     | '/api/insights'
+    | '/api/spawn'
     | '/api/stats'
     | '/api/tasks'
     | '/api/realtime/session'
@@ -116,6 +128,7 @@ export interface RootRouteChildren {
   StandupRoute: typeof StandupRoute
   ApiAgentsRoute: typeof ApiAgentsRoute
   ApiInsightsRoute: typeof ApiInsightsRoute
+  ApiSpawnRoute: typeof ApiSpawnRoute
   ApiStatsRoute: typeof ApiStatsRoute
   ApiTasksRoute: typeof ApiTasksRoute
   ApiRealtimeSessionRoute: typeof ApiRealtimeSessionRoute
@@ -151,6 +164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiStatsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/spawn': {
+      id: '/api/spawn'
+      path: '/api/spawn'
+      fullPath: '/api/spawn'
+      preLoaderRoute: typeof ApiSpawnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/insights': {
       id: '/api/insights'
       path: '/api/insights'
@@ -180,6 +200,7 @@ const rootRouteChildren: RootRouteChildren = {
   StandupRoute: StandupRoute,
   ApiAgentsRoute: ApiAgentsRoute,
   ApiInsightsRoute: ApiInsightsRoute,
+  ApiSpawnRoute: ApiSpawnRoute,
   ApiStatsRoute: ApiStatsRoute,
   ApiTasksRoute: ApiTasksRoute,
   ApiRealtimeSessionRoute: ApiRealtimeSessionRoute,

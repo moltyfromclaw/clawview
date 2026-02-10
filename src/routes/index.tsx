@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { AddAgentModal } from '../components/AddAgentModal'
+import { SpawnAgentModal } from '../components/SpawnAgentModal'
 
 export const Route = createFileRoute('/')({
   component: Dashboard,
@@ -168,6 +169,7 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState<'tasks' | 'insights' | 'overview' | 'daily' | 'team'>('tasks');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showAddAgentModal, setShowAddAgentModal] = useState(false);
+  const [showSpawnModal, setShowSpawnModal] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -620,12 +622,20 @@ function Dashboard() {
                   Manage and monitor your OpenClaw agents
                 </p>
               </div>
-              <button
-                onClick={() => setShowAddAgentModal(true)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg flex items-center gap-2 transition-colors"
-              >
-                ➕ Add Agent
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowSpawnModal(true)}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg flex items-center gap-2 transition-colors"
+                >
+                  🤖 Hire Contractor
+                </button>
+                <button
+                  onClick={() => setShowAddAgentModal(true)}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg flex items-center gap-2 transition-colors"
+                >
+                  ➕ Add Agent
+                </button>
+              </div>
             </div>
 
             {agents.length === 0 ? (
@@ -718,6 +728,19 @@ function Dashboard() {
         isOpen={showAddAgentModal}
         onClose={() => setShowAddAgentModal(false)}
         onAgentAdded={() => {
+          // Refresh agents list
+          fetch('/api/agents')
+            .then(res => res.json())
+            .then(data => setAgents(data.agents || []));
+        }}
+      />
+
+      {/* Spawn Agent Modal */}
+      <SpawnAgentModal
+        isOpen={showSpawnModal}
+        onClose={() => setShowSpawnModal(false)}
+        onAgentSpawned={(sessionKey) => {
+          console.log('Agent spawned:', sessionKey);
           // Refresh agents list
           fetch('/api/agents')
             .then(res => res.json())
