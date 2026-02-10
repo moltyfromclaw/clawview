@@ -10,11 +10,29 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiTasksRouteImport } from './routes/api/tasks'
+import { Route as ApiStatsRouteImport } from './routes/api/stats'
+import { Route as ApiInsightsRouteImport } from './routes/api/insights'
 import { Route as ApiAgentsRouteImport } from './routes/api/agents'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTasksRoute = ApiTasksRouteImport.update({
+  id: '/api/tasks',
+  path: '/api/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStatsRoute = ApiStatsRouteImport.update({
+  id: '/api/stats',
+  path: '/api/stats',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiInsightsRoute = ApiInsightsRouteImport.update({
+  id: '/api/insights',
+  path: '/api/insights',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAgentsRoute = ApiAgentsRouteImport.update({
@@ -26,27 +44,45 @@ const ApiAgentsRoute = ApiAgentsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/agents': typeof ApiAgentsRoute
+  '/api/insights': typeof ApiInsightsRoute
+  '/api/stats': typeof ApiStatsRoute
+  '/api/tasks': typeof ApiTasksRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/agents': typeof ApiAgentsRoute
+  '/api/insights': typeof ApiInsightsRoute
+  '/api/stats': typeof ApiStatsRoute
+  '/api/tasks': typeof ApiTasksRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/agents': typeof ApiAgentsRoute
+  '/api/insights': typeof ApiInsightsRoute
+  '/api/stats': typeof ApiStatsRoute
+  '/api/tasks': typeof ApiTasksRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/agents'
+  fullPaths: '/' | '/api/agents' | '/api/insights' | '/api/stats' | '/api/tasks'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/agents'
-  id: '__root__' | '/' | '/api/agents'
+  to: '/' | '/api/agents' | '/api/insights' | '/api/stats' | '/api/tasks'
+  id:
+    | '__root__'
+    | '/'
+    | '/api/agents'
+    | '/api/insights'
+    | '/api/stats'
+    | '/api/tasks'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiAgentsRoute: typeof ApiAgentsRoute
+  ApiInsightsRoute: typeof ApiInsightsRoute
+  ApiStatsRoute: typeof ApiStatsRoute
+  ApiTasksRoute: typeof ApiTasksRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -56,6 +92,27 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tasks': {
+      id: '/api/tasks'
+      path: '/api/tasks'
+      fullPath: '/api/tasks'
+      preLoaderRoute: typeof ApiTasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/stats': {
+      id: '/api/stats'
+      path: '/api/stats'
+      fullPath: '/api/stats'
+      preLoaderRoute: typeof ApiStatsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/insights': {
+      id: '/api/insights'
+      path: '/api/insights'
+      fullPath: '/api/insights'
+      preLoaderRoute: typeof ApiInsightsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/agents': {
@@ -71,6 +128,9 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiAgentsRoute: ApiAgentsRoute,
+  ApiInsightsRoute: ApiInsightsRoute,
+  ApiStatsRoute: ApiStatsRoute,
+  ApiTasksRoute: ApiTasksRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
