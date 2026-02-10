@@ -1,4 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { readFileSync, readdirSync, existsSync } from 'fs'
+import { homedir } from 'os'
+import { join } from 'path'
 
 // Types
 interface Agent {
@@ -16,44 +19,75 @@ interface Agent {
   activeSessions: number
 }
 
-// Fetch status from a gateway
-async function fetchGatewayStatus(agent: { gatewayUrl: string; gatewayToken: string | null }): Promise<{
+interface SessionEntry {
+  key: string
+  kind?: string
+  channel?: string
+  displayName?: string
+  updatedAt?: number
+  model?: string
+  totalTokens?: number
+}
+
+// Read local OpenClaw data directly from filesystem
+function getLocalOpenClawData(): {
   status: 'online' | 'offline' | 'error'
-  sessions: Array<{ sessionKey: string; label?: string; kind?: string }>
-  error?: string
-}> {
+  sessions: SessionEntry[]
+  totalCost: number
+  agentName: string
+} {
   try {
-    const url = `${agent.gatewayUrl}/api/sessions`
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    const openclawDir = join(homedir(), '.openclaw')
+    const sessionsDir = join(openclawDir, 'agents', 'main', 'sessions')
+    const configPath = join(openclawDir, 'openclaw.json')
     
-    if (agent.gatewayToken) {
-      headers['Authorization'] = `Bearer ${agent.gatewayToken}`
+    // Check if OpenClaw is installed
+    if (!existsSync(openclawDir)) {
+      return { status: 'offline', sessions: [], totalCost: 0, agentName: 'Local Agent' }
     }
     
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 5000)
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers,
-      signal: controller.signal,
-    })
-    
-    clearTimeout(timeout)
-    
-    if (!response.ok) {
-      return { status: 'error', sessions: [], error: `HTTP ${response.status}` }
+    // Read config for agent name
+    let agentName = 'Local Agent'
+    if (existsSync(configPath)) {
+      try {
+        const config = JSON.parse(readFileSync(configPath, 'utf-8'))
+        agentName = config.agents?.defaults?.name || 'Local Agent'
+      } catch {}
     }
     
-    const data = await response.json()
-    return { status: 'online', sessions: data.sessions || [] }
+    // Read sessions index
+    const sessionsIndexPath = join(sessionsDir, 'sessions.json')
+    if (!existsSync(sessionsIndexPath)) {
+      return { status: 'online', sessions: [], totalCost: 0, agentName }
+    }
+    
+    const sessionsData = JSON.parse(readFileSync(sessionsIndexPath, 'utf-8'))
+    // Sessions are stored directly as keys in the object (not under a "sessions" property)
+    const sessions: SessionEntry[] = Object.entries(sessionsData).map(
+      ([key, entry]: [string, any]) => ({
+        key,
+        kind: entry.kind,
+        channel: entry.channel || entry.origin?.provider,
+        displayName: entry.origin?.label || key,
+        updatedAt: entry.updatedAt,
+        model: entry.model,
+        totalTokens: entry.totalTokens,
+      })
+    )
+    
+    // Calculate rough cost estimate (simplified)
+    let totalCost = 0
+    for (const session of sessions) {
+      // Rough estimate: $0.003 per 1K tokens for Claude
+      if (session.totalTokens) {
+        totalCost += (session.totalTokens / 1000) * 0.003
+      }
+    }
+    
+    return { status: 'online', sessions, totalCost, agentName }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    return { 
-      status: message.includes('abort') ? 'offline' : 'error', 
-      sessions: [], 
-      error: message 
-    }
+    console.error('Error reading OpenClaw data:', error)
+    return { status: 'error', sessions: [], totalCost: 0, agentName: 'Local Agent' }
   }
 }
 
@@ -61,37 +95,37 @@ export const Route = createFileRoute('/api/agents')({
   server: {
     handlers: {
       GET: async () => {
-        // TODO: Get agents from D1 database when in SaaS mode
-        // For now, return empty array (no registered agents)
-        const agents: Agent[] = []
+        // Read local OpenClaw data directly
+        const localData = getLocalOpenClawData()
         
-        // Build response for each agent
-        const agentResults = await Promise.all(
-          agents.map(async (agent) => {
-            const gatewayResult = await fetchGatewayStatus(agent)
-            const activeSessions = gatewayResult.sessions.filter(
-              s => s.kind === 'main' || !s.kind
-            ).length
-            
-            return {
-              ...agent,
-              gatewayToken: undefined, // Don't expose
-              status: gatewayResult.status === 'online' 
-                ? (activeSessions > 0 ? 'active' : 'idle') 
-                : 'offline',
-              gatewayStatus: gatewayResult.status,
-              activeSessions,
-            }
-          })
-        )
+        const localAgent: Agent = {
+          id: 'local',
+          name: localData.agentName,
+          role: 'OpenClaw Gateway',
+          team: 'Local',
+          avatar: '🦞',
+          gatewayUrl: 'http://localhost:18789',
+          gatewayToken: null,
+          status: localData.status === 'online' 
+            ? (localData.sessions.length > 0 ? 'active' : 'idle')
+            : 'offline',
+          gatewayStatus: localData.status,
+          totalCost: localData.totalCost,
+          taskCount: localData.sessions.length,
+          activeSessions: localData.sessions.filter(s => 
+            s.kind === 'main' || !s.kind
+          ).length,
+        }
+        
+        const agents = [localAgent]
         
         return new Response(JSON.stringify({
-          agents: agentResults,
+          agents,
           stats: {
-            totalAgents: agentResults.length,
-            activeAgents: agentResults.filter(a => a.status === 'active').length,
-            onlineAgents: agentResults.filter(a => a.gatewayStatus === 'online').length,
-            totalCost: 0,
+            totalAgents: agents.length,
+            activeAgents: agents.filter(a => a.status === 'active').length,
+            onlineAgents: agents.filter(a => a.gatewayStatus === 'online').length,
+            totalCost: localData.totalCost,
           },
         }), {
           headers: { 'Content-Type': 'application/json' },
