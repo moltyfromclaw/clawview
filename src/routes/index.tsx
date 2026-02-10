@@ -1,9 +1,25 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
+import { AddAgentModal } from '../components/AddAgentModal'
 
 export const Route = createFileRoute('/')({
   component: Dashboard,
 })
+
+interface Agent {
+  id: string
+  name: string
+  role: string
+  team: string
+  avatar: string
+  gatewayUrl: string
+  gatewayToken: string | null
+  status: 'active' | 'idle' | 'offline'
+  gatewayStatus: 'online' | 'offline' | 'error'
+  totalCost: number
+  taskCount: number
+  activeSessions: number
+}
 
 interface Stats {
   totalCost: number;
@@ -147,22 +163,26 @@ function Dashboard() {
   const [taskStats, setTaskStats] = useState<TaskStats | null>(null);
   const [insights, setInsights] = useState<Insight[]>([]);
   const [efficiencyScore, setEfficiencyScore] = useState<EfficiencyScore | null>(null);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'tasks' | 'insights' | 'overview' | 'daily'>('tasks');
+  const [activeTab, setActiveTab] = useState<'tasks' | 'insights' | 'overview' | 'daily' | 'team'>('tasks');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [showAddAgentModal, setShowAddAgentModal] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [statsRes, tasksRes, insightsRes] = await Promise.all([
+        const [statsRes, tasksRes, insightsRes, agentsRes] = await Promise.all([
           fetch('/api/stats'),
           fetch(`/api/tasks?limit=200&category=${selectedCategory}`),
-          fetch('/api/insights')
+          fetch('/api/insights'),
+          fetch('/api/agents')
         ]);
 
         const statsData = await statsRes.json();
         const tasksData = await tasksRes.json();
         const insightsData = await insightsRes.json();
+        const agentsData = await agentsRes.json();
 
         setStats(statsData.stats);
         setDailySummaries(statsData.dailySummaries || []);
@@ -170,6 +190,7 @@ function Dashboard() {
         setTaskStats(tasksData.stats || null);
         setInsights(insightsData.insights || []);
         setEfficiencyScore(insightsData.efficiencyScore || null);
+        setAgents(agentsData.agents || []);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -214,6 +235,12 @@ function Dashboard() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowAddAgentModal(true)}
+                className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg flex items-center gap-1.5 transition-colors"
+              >
+                ➕ Add Agent
+              </button>
               <Link 
                 to="/standup"
                 className="px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-500 rounded-lg flex items-center gap-1.5 transition-colors"
@@ -262,7 +289,7 @@ function Dashboard() {
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6 flex-wrap">
-          {(['tasks', 'insights', 'overview', 'daily'] as const).map(tab => (
+          {(['tasks', 'insights', 'overview', 'daily', 'team'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -276,6 +303,7 @@ function Dashboard() {
               {tab === 'insights' && '💡 Insights'}
               {tab === 'overview' && '📊 Overview'}
               {tab === 'daily' && '📅 Daily'}
+              {tab === 'team' && '👥 Team'}
             </button>
           ))}
         </div>
@@ -581,7 +609,121 @@ function Dashboard() {
             </div>
           </div>
         )}
+
+        {/* Team Tab */}
+        {activeTab === 'team' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">Your Agents</h2>
+                <p className="text-gray-400 text-sm mt-1">
+                  Manage and monitor your OpenClaw agents
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAddAgentModal(true)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg flex items-center gap-2 transition-colors"
+              >
+                ➕ Add Agent
+              </button>
+            </div>
+
+            {agents.length === 0 ? (
+              <div className="bg-gray-900 rounded-xl border border-gray-800 p-12 text-center">
+                <div className="text-6xl mb-4">🦞</div>
+                <h3 className="text-xl font-semibold mb-2">No agents yet</h3>
+                <p className="text-gray-400 mb-6 max-w-md mx-auto">
+                  Add your first OpenClaw agent to start monitoring and managing your AI workforce.
+                </p>
+                <button
+                  onClick={() => setShowAddAgentModal(true)}
+                  className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-medium transition-colors"
+                >
+                  Add Your First Agent
+                </button>
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {/* Group agents by team */}
+                {Object.entries(
+                  agents.reduce((acc, agent) => {
+                    const team = agent.team || 'Ungrouped';
+                    if (!acc[team]) acc[team] = [];
+                    acc[team].push(agent);
+                    return acc;
+                  }, {} as Record<string, Agent[]>)
+                ).map(([team, teamAgents]) => (
+                  <div key={team} className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+                    <div className="p-4 border-b border-gray-800 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">👥</span>
+                        <h3 className="font-semibold">{team}</h3>
+                        <span className="px-2 py-0.5 bg-gray-800 rounded text-xs text-gray-400">
+                          {teamAgents.length} agent{teamAgents.length !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="divide-y divide-gray-800">
+                      {teamAgents.map(agent => (
+                        <div key={agent.id} className="p-4 hover:bg-gray-800/50 transition-colors">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-gray-800 flex items-center justify-center text-2xl shrink-0">
+                              {agent.avatar}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-medium text-white">{agent.name}</h4>
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${
+                                  agent.gatewayStatus === 'online'
+                                    ? 'bg-green-500/20 text-green-400'
+                                    : agent.gatewayStatus === 'error'
+                                    ? 'bg-red-500/20 text-red-400'
+                                    : 'bg-gray-500/20 text-gray-400'
+                                }`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${
+                                    agent.gatewayStatus === 'online'
+                                      ? 'bg-green-400'
+                                      : agent.gatewayStatus === 'error'
+                                      ? 'bg-red-400'
+                                      : 'bg-gray-400'
+                                  }`}></span>
+                                  {agent.gatewayStatus}
+                                </span>
+                                {agent.status === 'active' && (
+                                  <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full text-xs">
+                                    active
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-400 mt-0.5">{agent.role}</p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <div className="text-sm text-gray-400">{agent.taskCount} tasks</div>
+                              <div className="text-green-400 text-sm">{formatCost(agent.totalCost)}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </main>
+
+      {/* Add Agent Modal */}
+      <AddAgentModal
+        isOpen={showAddAgentModal}
+        onClose={() => setShowAddAgentModal(false)}
+        onAgentAdded={() => {
+          // Refresh agents list
+          fetch('/api/agents')
+            .then(res => res.json())
+            .then(data => setAgents(data.agents || []));
+        }}
+      />
 
       {/* Footer */}
       <footer className="border-t border-gray-800 mt-12 py-6 text-center text-gray-500 text-sm">
