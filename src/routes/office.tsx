@@ -2,15 +2,13 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { 
   OrbitControls, 
-  Environment, 
-  ContactShadows,
   Float,
   Text,
   RoundedBox,
-  MeshTransmissionMaterial,
-  Sparkles
+  Sparkles,
+  Line
 } from '@react-three/drei'
-import { useState, useEffect, useRef, Suspense, useMemo } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import * as THREE from 'three'
 
 export const Route = createFileRoute('/office')({
@@ -54,13 +52,12 @@ function Robot({
   
   useFrame((state) => {
     if (!groupRef.current) return
-    groupRef.current.position.y = position[1] + Math.sin(state.clock.elapsedTime * 2) * 0.03
+    groupRef.current.position.y = position[1] + Math.sin(state.clock.elapsedTime * 2) * 0.02
     if (isActive) {
-      groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.2
+      groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.15
     }
   })
 
-  const bodyColor = isActive ? color : '#64748b'
   const glowColor = isActive ? '#22c55e' : '#94a3b8'
 
   return (
@@ -71,47 +68,60 @@ function Robot({
       onPointerOver={() => setHovered(true)}
       onPointerOut={() => setHovered(false)}
     >
-      <RoundedBox args={[0.4, 0.5, 0.35]} radius={0.08} position={[0, 0.25, 0]}>
-        <meshStandardMaterial color={bodyColor} metalness={0.3} roughness={0.4} />
+      {/* Body */}
+      <RoundedBox args={[0.35, 0.45, 0.3]} radius={0.08} position={[0, 0.23, 0]}>
+        <meshStandardMaterial color={color} metalness={0.2} roughness={0.6} />
       </RoundedBox>
-      <RoundedBox args={[0.38, 0.3, 0.3]} radius={0.06} position={[0, 0.62, 0]}>
-        <meshStandardMaterial color={bodyColor} metalness={0.3} roughness={0.4} />
+      
+      {/* Head */}
+      <RoundedBox args={[0.32, 0.26, 0.26]} radius={0.06} position={[0, 0.55, 0]}>
+        <meshStandardMaterial color={color} metalness={0.2} roughness={0.6} />
       </RoundedBox>
-      <mesh position={[-0.08, 0.65, 0.12]}>
-        <sphereGeometry args={[0.045, 16, 16]} />
-        <meshStandardMaterial color={glowColor} emissive={glowColor} emissiveIntensity={isActive ? 1 : 0.3} />
+      
+      {/* Eyes */}
+      <mesh position={[-0.07, 0.57, 0.11]}>
+        <sphereGeometry args={[0.04, 16, 16]} />
+        <meshStandardMaterial color={glowColor} emissive={glowColor} emissiveIntensity={isActive ? 1.5 : 0.3} />
       </mesh>
-      <mesh position={[0.08, 0.65, 0.12]}>
-        <sphereGeometry args={[0.045, 16, 16]} />
-        <meshStandardMaterial color={glowColor} emissive={glowColor} emissiveIntensity={isActive ? 1 : 0.3} />
+      <mesh position={[0.07, 0.57, 0.11]}>
+        <sphereGeometry args={[0.04, 16, 16]} />
+        <meshStandardMaterial color={glowColor} emissive={glowColor} emissiveIntensity={isActive ? 1.5 : 0.3} />
       </mesh>
-      <mesh position={[0, 0.85, 0]}>
-        <cylinderGeometry args={[0.015, 0.015, 0.12]} />
-        <meshStandardMaterial color="#475569" />
-      </mesh>
-      <mesh position={[0, 0.93, 0]}>
-        <sphereGeometry args={[0.03, 16, 16]} />
-        <meshStandardMaterial color={isActive ? '#22c55e' : '#ef4444'} emissive={isActive ? '#22c55e' : '#ef4444'} emissiveIntensity={0.8} />
-      </mesh>
-      <RoundedBox args={[0.1, 0.28, 0.1]} radius={0.02} position={[-0.28, 0.2, 0]}>
-        <meshStandardMaterial color={bodyColor} metalness={0.3} roughness={0.4} />
+
+      {/* Arms */}
+      <RoundedBox args={[0.08, 0.22, 0.08]} radius={0.02} position={[-0.24, 0.18, 0]}>
+        <meshStandardMaterial color={color} metalness={0.2} roughness={0.6} />
       </RoundedBox>
-      <RoundedBox args={[0.1, 0.28, 0.1]} radius={0.02} position={[0.28, 0.2, 0]}>
-        <meshStandardMaterial color={bodyColor} metalness={0.3} roughness={0.4} />
+      <RoundedBox args={[0.08, 0.22, 0.08]} radius={0.02} position={[0.24, 0.18, 0]}>
+        <meshStandardMaterial color={color} metalness={0.2} roughness={0.6} />
       </RoundedBox>
-      <RoundedBox args={[0.12, 0.2, 0.12]} radius={0.02} position={[-0.1, -0.1, 0]}>
-        <meshStandardMaterial color={bodyColor} metalness={0.3} roughness={0.4} />
+
+      {/* Legs */}
+      <RoundedBox args={[0.1, 0.15, 0.1]} radius={0.02} position={[-0.08, -0.07, 0]}>
+        <meshStandardMaterial color={color} metalness={0.2} roughness={0.6} />
       </RoundedBox>
-      <RoundedBox args={[0.12, 0.2, 0.12]} radius={0.02} position={[0.1, -0.1, 0]}>
-        <meshStandardMaterial color={bodyColor} metalness={0.3} roughness={0.4} />
+      <RoundedBox args={[0.1, 0.15, 0.1]} radius={0.02} position={[0.08, -0.07, 0]}>
+        <meshStandardMaterial color={color} metalness={0.2} roughness={0.6} />
       </RoundedBox>
+
+      {/* Selection ring */}
       {(hovered || isSelected) && (
         <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.4, 0.45, 32]} />
-          <meshBasicMaterial color="#8b5cf6" transparent opacity={0.8} />
+          <ringGeometry args={[0.35, 0.38, 32]} />
+          <meshBasicMaterial color={glowColor} transparent opacity={0.8} />
         </mesh>
       )}
-      <Text position={[0, 1.05, 0]} fontSize={0.1} color="white" anchorX="center" outlineWidth={0.008} outlineColor="black">
+
+      {/* Status dot */}
+      {isActive && (
+        <mesh position={[0, 0.78, 0]}>
+          <sphereGeometry args={[0.03, 8, 8]} />
+          <meshStandardMaterial color="#22c55e" emissive="#22c55e" emissiveIntensity={2} />
+        </mesh>
+      )}
+
+      {/* Name label */}
+      <Text position={[0, 0.9, 0]} fontSize={0.12} color={color} anchorX="center" outlineWidth={0.005} outlineColor="#000">
         {name}
       </Text>
     </group>
@@ -129,304 +139,103 @@ function ContractorOrb({ parentPosition, index, total }: {
   useFrame((state) => {
     if (!ref.current) return
     const t = state.clock.elapsedTime + index * (Math.PI * 2 / total)
-    ref.current.position.x = parentPosition[0] + Math.cos(t) * 0.7
-    ref.current.position.z = parentPosition[2] + Math.sin(t) * 0.7
-    ref.current.position.y = parentPosition[1] + 0.5 + Math.sin(t * 2) * 0.1
+    ref.current.position.x = parentPosition[0] + Math.cos(t) * 0.6
+    ref.current.position.z = parentPosition[2] + Math.sin(t) * 0.6
+    ref.current.position.y = parentPosition[1] + 0.4 + Math.sin(t * 2) * 0.08
   })
 
   return (
-    <Float speed={3} floatIntensity={0.3}>
-      <mesh ref={ref}>
-        <sphereGeometry args={[0.08, 16, 16]} />
-        <meshStandardMaterial color="#a855f7" emissive="#a855f7" emissiveIntensity={0.5} transparent opacity={0.9} />
-      </mesh>
-    </Float>
+    <mesh ref={ref}>
+      <sphereGeometry args={[0.06, 16, 16]} />
+      <meshStandardMaterial color="#a855f7" emissive="#a855f7" emissiveIntensity={1} transparent opacity={0.9} />
+    </mesh>
   )
 }
 
-// === CODING ZONE - Cyberpunk Hacker Station ===
-function CodingZone({ position }: { position: [number, number, number] }) {
-  const screenRef = useRef<THREE.Mesh>(null)
+// Zone with outline (like in the reference image)
+function Zone({ 
+  position, 
+  size = [4, 4], 
+  color, 
+  label 
+}: { 
+  position: [number, number, number]
+  size?: [number, number]
+  color: string
+  label: string
+}) {
+  const [w, h] = size
+  const hw = w / 2
+  const hh = h / 2
   
-  useFrame((state) => {
-    if (screenRef.current) {
-      (screenRef.current.material as THREE.MeshStandardMaterial).emissiveIntensity = 
-        0.3 + Math.sin(state.clock.elapsedTime * 3) * 0.1
-    }
-  })
+  // Corner points for the outline
+  const points: [number, number, number][] = [
+    [-hw, 0.01, -hh],
+    [hw, 0.01, -hh],
+    [hw, 0.01, hh],
+    [-hw, 0.01, hh],
+    [-hw, 0.01, -hh], // close the loop
+  ]
 
   return (
     <group position={position}>
-      {/* Platform */}
-      <mesh position={[0, 0.02, 0]}>
-        <cylinderGeometry args={[2.5, 2.8, 0.05, 6]} />
-        <meshStandardMaterial color="#1e293b" metalness={0.5} roughness={0.3} />
-      </mesh>
+      {/* Zone outline */}
+      <Line
+        points={points}
+        color={color}
+        lineWidth={1.5}
+        transparent
+        opacity={0.8}
+      />
       
-      {/* Neon edge */}
-      <mesh position={[0, 0.05, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[2.65, 0.02, 8, 6]} />
-        <meshStandardMaterial color="#22d3ee" emissive="#22d3ee" emissiveIntensity={1} />
-      </mesh>
-
-      {/* Main holographic display */}
-      <group position={[0, 1.2, -1.5]}>
-        <mesh ref={screenRef}>
-          <planeGeometry args={[2.5, 1.5]} />
-          <meshStandardMaterial color="#22d3ee" emissive="#22d3ee" emissiveIntensity={0.3} transparent opacity={0.3} side={THREE.DoubleSide} />
-        </mesh>
-        {/* Code lines effect */}
-        {[...Array(8)].map((_, i) => (
-          <mesh key={i} position={[-0.8 + Math.random() * 0.3, 0.5 - i * 0.15, 0.01]}>
-            <planeGeometry args={[0.8 + Math.random() * 0.8, 0.04]} />
-            <meshBasicMaterial color="#22d3ee" transparent opacity={0.6} />
-          </mesh>
-        ))}
-      </group>
-
-      {/* Side monitors */}
-      {[-1.8, 1.8].map((x, i) => (
-        <group key={i} position={[x, 0.8, -1]} rotation={[0, x > 0 ? -0.4 : 0.4, 0]}>
-          <RoundedBox args={[0.8, 0.6, 0.05]} radius={0.02}>
-            <meshStandardMaterial color="#0f172a" />
-          </RoundedBox>
-          <mesh position={[0, 0, 0.03]}>
-            <planeGeometry args={[0.7, 0.5]} />
-            <meshStandardMaterial color="#22d3ee" emissive="#22d3ee" emissiveIntensity={0.2} />
-          </mesh>
-        </group>
-      ))}
-
-      {/* Floating data cubes */}
-      {[[-0.8, 1.8, 0.5], [0.9, 2, 0.3], [0, 2.2, -0.5]].map((pos, i) => (
-        <Float key={i} speed={2} floatIntensity={0.5} rotationIntensity={0.5}>
-          <mesh position={pos as [number, number, number]}>
-            <boxGeometry args={[0.15, 0.15, 0.15]} />
-            <meshStandardMaterial color="#22d3ee" emissive="#22d3ee" emissiveIntensity={0.5} transparent opacity={0.7} wireframe />
-          </mesh>
-        </Float>
-      ))}
-
-      <Sparkles count={30} scale={4} size={1} speed={0.3} color="#22d3ee" position={[0, 1.5, 0]} />
-      
-      <Text position={[0, 0.15, 1.8]} fontSize={0.2} color="#22d3ee" anchorX="center">
-        CODING
+      {/* Zone label */}
+      <Text
+        position={[-hw + 0.2, 0.02, hh - 0.3]}
+        fontSize={0.25}
+        color={color}
+        anchorX="left"
+        anchorY="top"
+        rotation={[-Math.PI / 2, 0, 0]}
+      >
+        {label}
       </Text>
+
+      {/* Subtle floor fill */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
+        <planeGeometry args={[w - 0.05, h - 0.05]} />
+        <meshBasicMaterial color={color} transparent opacity={0.03} />
+      </mesh>
     </group>
   )
 }
 
-// === RESEARCH ZONE - Magical Library ===
-function ResearchZone({ position }: { position: [number, number, number] }) {
-  return (
-    <group position={position}>
-      {/* Platform */}
-      <mesh position={[0, 0.02, 0]}>
-        <cylinderGeometry args={[2.5, 2.8, 0.05, 8]} />
-        <meshStandardMaterial color="#78716c" metalness={0.3} roughness={0.6} />
-      </mesh>
-
-      {/* Bookshelves */}
-      {[-1.5, 1.5].map((x, i) => (
-        <group key={i} position={[x, 0, -1.2]} rotation={[0, x > 0 ? -0.3 : 0.3, 0]}>
-          {/* Shelf frame */}
-          <RoundedBox args={[1, 2, 0.3]} radius={0.02} position={[0, 1, 0]}>
-            <meshStandardMaterial color="#78350f" roughness={0.8} />
-          </RoundedBox>
-          {/* Books */}
-          {[0.4, 0.9, 1.4].map((y, j) => (
-            <group key={j} position={[0, y, 0.1]}>
-              {[...Array(5)].map((_, k) => (
-                <RoundedBox key={k} args={[0.08, 0.25, 0.15]} radius={0.01} position={[-0.25 + k * 0.12, 0, 0]}>
-                  <meshStandardMaterial color={['#dc2626', '#2563eb', '#16a34a', '#9333ea', '#ca8a04'][k]} />
-                </RoundedBox>
-              ))}
-            </group>
-          ))}
-        </group>
-      ))}
-
-      {/* Floating book/grimoire */}
-      <Float speed={1.5} floatIntensity={0.4} rotationIntensity={0.2}>
-        <group position={[0, 1.5, 0]}>
-          <RoundedBox args={[0.5, 0.6, 0.08]} radius={0.02}>
-            <meshStandardMaterial color="#7c2d12" />
-          </RoundedBox>
-          {/* Glowing runes */}
-          <mesh position={[0, 0, 0.05]}>
-            <planeGeometry args={[0.35, 0.45]} />
-            <meshStandardMaterial color="#fbbf24" emissive="#fbbf24" emissiveIntensity={0.5} transparent opacity={0.8} />
-          </mesh>
-        </group>
-      </Float>
-
-      {/* Magic particles */}
-      <Sparkles count={40} scale={4} size={1.5} speed={0.2} color="#fbbf24" position={[0, 1.2, 0]} />
-
-      {/* Crystal ball */}
-      <mesh position={[0, 0.4, 0.8]}>
-        <sphereGeometry args={[0.2, 32, 32]} />
-        <meshPhysicalMaterial color="#818cf8" transmission={0.9} thickness={0.5} roughness={0} />
-      </mesh>
-      <mesh position={[0, 0.15, 0.8]}>
-        <cylinderGeometry args={[0.15, 0.2, 0.1, 16]} />
-        <meshStandardMaterial color="#1c1917" metalness={0.8} />
-      </mesh>
-
-      <Text position={[0, 0.15, 1.8]} fontSize={0.2} color="#fbbf24" anchorX="center">
-        RESEARCH
-      </Text>
-    </group>
-  )
-}
-
-// === COMMS ZONE - Communication Hub ===
-function CommsZone({ position }: { position: [number, number, number] }) {
-  const antennaRef = useRef<THREE.Group>(null)
-  
-  useFrame((state) => {
-    if (antennaRef.current) {
-      antennaRef.current.rotation.y = state.clock.elapsedTime * 0.5
-    }
-  })
-
-  return (
-    <group position={position}>
-      {/* Platform */}
-      <mesh position={[0, 0.02, 0]}>
-        <cylinderGeometry args={[2.5, 2.8, 0.05, 8]} />
-        <meshStandardMaterial color="#475569" metalness={0.4} roughness={0.4} />
-      </mesh>
-
-      {/* Central antenna tower */}
-      <group ref={antennaRef} position={[0, 0, -0.5]}>
-        <mesh position={[0, 1, 0]}>
-          <cylinderGeometry args={[0.08, 0.15, 2]} />
-          <meshStandardMaterial color="#334155" metalness={0.9} />
-        </mesh>
-        {/* Satellite dishes */}
-        {[0, Math.PI * 0.66, Math.PI * 1.33].map((rot, i) => (
-          <group key={i} position={[Math.sin(rot) * 0.4, 1.8, Math.cos(rot) * 0.4]} rotation={[0.3, rot, 0]}>
-            <mesh>
-              <sphereGeometry args={[0.25, 16, 8, 0, Math.PI]} />
-              <meshStandardMaterial color="#64748b" metalness={0.8} side={THREE.DoubleSide} />
-            </mesh>
-          </group>
-        ))}
-        {/* Blinking lights */}
-        <mesh position={[0, 2.1, 0]}>
-          <sphereGeometry args={[0.05, 8, 8]} />
-          <meshStandardMaterial color="#22c55e" emissive="#22c55e" emissiveIntensity={1} />
-        </mesh>
-      </group>
-
-      {/* Holographic globe */}
-      <Float speed={1} floatIntensity={0.2}>
-        <mesh position={[0, 1.2, 0.8]}>
-          <sphereGeometry args={[0.35, 32, 32]} />
-          <meshStandardMaterial color="#22c55e" emissive="#22c55e" emissiveIntensity={0.3} transparent opacity={0.4} wireframe />
-        </mesh>
-      </Float>
-
-      {/* Signal waves */}
-      {[1, 1.5, 2].map((scale, i) => (
-        <mesh key={i} position={[0, 1.5, -0.5]} rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[0.3 * scale, 0.01, 8, 32]} />
-          <meshStandardMaterial color="#22c55e" emissive="#22c55e" emissiveIntensity={0.5} transparent opacity={0.3 - i * 0.08} />
-        </mesh>
-      ))}
-
-      <Sparkles count={20} scale={3} size={0.8} speed={0.5} color="#22c55e" position={[0, 1.5, 0]} />
-
-      <Text position={[0, 0.15, 1.8]} fontSize={0.2} color="#22c55e" anchorX="center">
-        COMMS
-      </Text>
-    </group>
-  )
-}
-
-// === OPS ZONE - Command Center ===
-function OpsZone({ position }: { position: [number, number, number] }) {
-  return (
-    <group position={position}>
-      {/* Platform */}
-      <mesh position={[0, 0.02, 0]}>
-        <cylinderGeometry args={[2.5, 2.8, 0.05, 8]} />
-        <meshStandardMaterial color="#64748b" metalness={0.4} roughness={0.4} />
-      </mesh>
-
-      {/* Curved control panel */}
-      <group position={[0, 0.5, -1]}>
-        {/* Panel arc */}
-        <mesh>
-          <torusGeometry args={[1.5, 0.3, 4, 16, Math.PI * 0.6]} />
-          <meshStandardMaterial color="#1e293b" metalness={0.8} roughness={0.2} />
-        </mesh>
-        {/* Screens on panel */}
-        {[-0.8, 0, 0.8].map((angle, i) => {
-          const x = Math.sin(angle) * 1.5
-          const z = Math.cos(angle) * 1.5 - 1.5
-          return (
-            <group key={i} position={[x, 0.3, z]} rotation={[0, -angle, 0]}>
-              <mesh>
-                <planeGeometry args={[0.5, 0.4]} />
-                <meshStandardMaterial color={['#ef4444', '#f59e0b', '#ef4444'][i]} emissive={['#ef4444', '#f59e0b', '#ef4444'][i]} emissiveIntensity={0.3} />
-              </mesh>
-            </group>
-          )
-        })}
-      </group>
-
-      {/* Warning lights */}
-      {[-1.5, 1.5].map((x, i) => (
-        <group key={i} position={[x, 1.5, -1.5]}>
-          <mesh>
-            <cylinderGeometry args={[0.1, 0.1, 0.3]} />
-            <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={0.8} />
-          </mesh>
-        </group>
-      ))}
-
-      {/* Holographic status display */}
-      <Float speed={0.5} floatIntensity={0.1}>
-        <group position={[0, 1.8, -0.5]}>
-          {/* Circular status rings */}
-          {[0.3, 0.5, 0.7].map((r, i) => (
-            <mesh key={i} rotation={[Math.PI / 2, 0, 0]}>
-              <torusGeometry args={[r, 0.015, 8, 32]} />
-              <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={0.5} transparent opacity={0.6 - i * 0.15} />
-            </mesh>
-          ))}
-          <Text position={[0, 0, 0]} fontSize={0.15} color="#ef4444" anchorX="center">
-            STATUS
-          </Text>
-        </group>
-      </Float>
-
-      <Sparkles count={15} scale={3} size={0.5} speed={0.8} color="#ef4444" position={[0, 1.2, 0]} />
-
-      <Text position={[0, 0.15, 1.8]} fontSize={0.2} color="#ef4444" anchorX="center">
-        OPS
-      </Text>
-    </group>
-  )
-}
-
-// Floor
+// Dark floor with subtle grid
 function Floor() {
   return (
     <group>
-      {/* Main floor */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
-        <planeGeometry args={[30, 30]} />
-        <meshStandardMaterial color="#e2e8f0" metalness={0.1} roughness={0.8} />
+      {/* Main dark floor */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]}>
+        <planeGeometry args={[40, 40]} />
+        <meshBasicMaterial color="#0a1014" />
       </mesh>
-      {/* Grid lines */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
-        <planeGeometry args={[30, 30, 30, 30]} />
-        <meshBasicMaterial color="#cbd5e1" wireframe transparent opacity={0.3} />
-      </mesh>
+      
+      {/* Subtle grid */}
+      <gridHelper args={[40, 40, '#1a2a2a', '#0f1818']} position={[0, 0, 0]} />
     </group>
+  )
+}
+
+// Background stars/particles
+function Stars() {
+  return (
+    <Sparkles
+      count={100}
+      scale={30}
+      size={1}
+      speed={0.1}
+      opacity={0.4}
+      color="#ffffff"
+    />
   )
 }
 
@@ -436,45 +245,53 @@ function Scene({ agents, contractors, selectedAgent, onSelectAgent }: {
   selectedAgent: string | null
   onSelectAgent: (id: string | null) => void
 }) {
-  const agentColors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981']
+  const agentColors = ['#f97316', '#8b5cf6', '#3b82f6', '#22c55e', '#ec4899']
   
-  // Position agents near their zones
+  const zones = [
+    { id: 'coding', position: [0, 0, 0] as [number, number, number], color: '#f97316', label: 'App Development' },
+    { id: 'research', position: [-6, 0, 0] as [number, number, number], color: '#3b82f6', label: 'Research' },
+    { id: 'comms', position: [6, 0, 0] as [number, number, number], color: '#22c55e', label: 'Communications' },
+    { id: 'ops', position: [0, 0, -6] as [number, number, number], color: '#ef4444', label: 'Operations' },
+  ]
+
   const zonePositions: Record<string, [number, number, number]> = {
-    coding: [5, 0, 0],
-    research: [-5, 0, 0],
-    comms: [0, 0, 5],
-    ops: [0, 0, -5],
+    coding: [0, 0, 0],
+    research: [-6, 0, 0],
+    comms: [6, 0, 0],
+    ops: [0, 0, -6],
   }
 
   return (
     <>
-      <ambientLight intensity={0.8} />
-      <directionalLight position={[10, 20, 10]} intensity={1.2} castShadow />
-      <directionalLight position={[-10, 15, -10]} intensity={0.5} />
-      <hemisphereLight intensity={0.6} color="#ffffff" groundColor="#e2e8f0" />
-      <pointLight position={[5, 4, 0]} intensity={0.4} color="#22d3ee" />
-      <pointLight position={[-5, 4, 0]} intensity={0.4} color="#fbbf24" />
-      <pointLight position={[0, 4, 5]} intensity={0.4} color="#22c55e" />
-      <pointLight position={[0, 4, -5]} intensity={0.4} color="#ef4444" />
+      {/* Soft ambient light */}
+      <ambientLight intensity={0.4} />
+      
+      {/* Key lights */}
+      <directionalLight position={[5, 10, 5]} intensity={0.4} color="#fff5f0" />
+      <pointLight position={[0, 5, 0]} intensity={0.3} color="#f97316" />
+      
+      {/* Subtle colored rim lights */}
+      <pointLight position={[-8, 3, 0]} intensity={0.15} color="#3b82f6" />
+      <pointLight position={[8, 3, 0]} intensity={0.15} color="#22c55e" />
+      <pointLight position={[0, 3, -8]} intensity={0.15} color="#ef4444" />
 
       <Floor />
-      <ContactShadows position={[0, 0, 0]} opacity={0.3} blur={2} far={10} />
+      <Stars />
 
-      {/* Themed zones */}
-      <CodingZone position={[5, 0, 0]} />
-      <ResearchZone position={[-5, 0, 0]} />
-      <CommsZone position={[0, 0, 5]} />
-      <OpsZone position={[0, 0, -5]} />
+      {/* Zones */}
+      {zones.map(zone => (
+        <Zone key={zone.id} position={zone.position} color={zone.color} label={zone.label} />
+      ))}
 
       {/* Agents */}
       {agents.map((agent, i) => {
         const zone = agent.zone || ['coding', 'research', 'comms', 'ops'][i % 4]
         const basePos = zonePositions[zone] || [0, 0, 0]
-        const offset = (i % 2 === 0 ? -0.8 : 0.8)
+        const offset = i * 0.8 - (agents.length * 0.4) + 0.4
         const pos: [number, number, number] = [
-          basePos[0] + (basePos[0] === 0 ? offset : 0),
+          basePos[0] + (zone === 'coding' ? offset : 0),
           0,
-          basePos[2] + (basePos[2] === 0 ? offset : 0)
+          basePos[2] + (zone !== 'coding' ? offset * 0.5 : 0.5)
         ]
         
         return (
@@ -491,15 +308,15 @@ function Scene({ agents, contractors, selectedAgent, onSelectAgent }: {
       })}
 
       {/* Contractors */}
-      {contractors.map((c, i) => {
+      {contractors.map((c) => {
         const parentIndex = agents.findIndex(a => a.id === c.parentId)
-        const zone = agents[parentIndex]?.zone || ['coding', 'research', 'comms', 'ops'][parentIndex % 4]
+        const zone = agents[parentIndex]?.zone || 'coding'
         const basePos = zonePositions[zone] || [0, 0, 0]
         const agentContractors = contractors.filter(cc => cc.parentId === c.parentId)
         return (
           <ContractorOrb 
             key={c.id} 
-            parentPosition={basePos}
+            parentPosition={[basePos[0], 0, basePos[2] + 0.5]}
             index={agentContractors.indexOf(c)}
             total={agentContractors.length}
           />
@@ -508,14 +325,12 @@ function Scene({ agents, contractors, selectedAgent, onSelectAgent }: {
 
       <OrbitControls 
         enablePan={false}
-        minDistance={8}
-        maxDistance={25}
+        minDistance={6}
+        maxDistance={20}
         minPolarAngle={Math.PI / 6}
-        maxPolarAngle={Math.PI / 2.3}
-        target={[0, 0.5, 0]}
+        maxPolarAngle={Math.PI / 2.5}
+        target={[0, 0, 0]}
       />
-      
-      <Environment preset="studio" />
     </>
   )
 }
@@ -544,15 +359,11 @@ function OfficePage() {
         }))
 
         if (agentList.length === 0) {
-          agentList.push({
-            id: 'demo-1',
-            name: 'Molty',
-            status: 'active',
-            taskCount: 42,
-            totalCost: 12.50,
-            currentTask: 'Building ClawView',
-            zone: 'coding',
-          })
+          agentList.push(
+            { id: 'demo-1', name: 'Molty', status: 'active', taskCount: 42, totalCost: 12.50, currentTask: 'Building ClawView', zone: 'coding' },
+            { id: 'demo-2', name: 'Claude', status: 'active', taskCount: 28, totalCost: 8.20, currentTask: 'Code review', zone: 'coding' },
+            { id: 'demo-3', name: 'Codex', status: 'idle', taskCount: 15, totalCost: 4.10, zone: 'coding' },
+          )
         }
 
         setAgents(agentList)
@@ -572,23 +383,32 @@ function OfficePage() {
   const activeAgent = agents.find(a => a.id === selectedAgent)
 
   return (
-    <div className="h-screen w-screen bg-slate-200 relative">
+    <div className="h-screen w-screen bg-[#060a0c] relative overflow-hidden">
+      {/* Gradient overlay for depth */}
+      <div 
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(ellipse at center, transparent 0%, #060a0c 70%)',
+        }}
+      />
+
+      {/* Header */}
       <div className="absolute top-0 left-0 right-0 z-10 p-3 flex items-center justify-between pointer-events-none">
-        <Link to="/" className="text-xs text-gray-400 hover:text-white bg-gray-900/80 px-3 py-1.5 rounded backdrop-blur-sm pointer-events-auto">
+        <Link to="/" className="text-xs text-gray-400 hover:text-white bg-gray-900/60 px-3 py-1.5 rounded backdrop-blur-sm pointer-events-auto border border-gray-800">
           ← Dashboard
         </Link>
-        <div className="text-xs text-gray-400 bg-gray-900/80 px-3 py-1.5 rounded backdrop-blur-sm">
+        <div className="text-xs text-gray-400 bg-gray-900/60 px-3 py-1.5 rounded backdrop-blur-sm border border-gray-800">
           🏢 Agent Office
         </div>
       </div>
 
+      {/* Agent info panel */}
       {activeAgent && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
-          <div className="bg-gray-900/95 border border-gray-700 rounded-lg p-4 min-w-56 backdrop-blur-sm">
+          <div className="bg-gray-900/90 border border-gray-700 rounded-lg p-4 min-w-56 backdrop-blur-sm">
             <div className="flex items-center gap-3 mb-2">
               <div className={`w-2 h-2 rounded-full ${activeAgent.status === 'active' ? 'bg-green-400' : 'bg-gray-400'}`} />
               <span className="text-white text-sm font-medium">{activeAgent.name}</span>
-              <span className="text-xs text-gray-500 capitalize">{activeAgent.zone}</span>
             </div>
             {activeAgent.currentTask && (
               <div className="text-xs text-gray-400 mb-2">📋 {activeAgent.currentTask}</div>
@@ -601,21 +421,16 @@ function OfficePage() {
         </div>
       )}
 
-      <div className="absolute bottom-4 left-4 z-10 bg-gray-900/80 backdrop-blur-sm rounded p-2 text-xs text-gray-400 space-y-1">
-        <div className="flex items-center gap-2"><span className="w-2 h-2 rounded bg-cyan-400"/> Coding</div>
-        <div className="flex items-center gap-2"><span className="w-2 h-2 rounded bg-amber-400"/> Research</div>
-        <div className="flex items-center gap-2"><span className="w-2 h-2 rounded bg-green-400"/> Comms</div>
-        <div className="flex items-center gap-2"><span className="w-2 h-2 rounded bg-red-400"/> Ops</div>
-      </div>
-
-      <div className="absolute bottom-4 right-4 z-10 bg-gray-900/80 backdrop-blur-sm rounded p-2 text-xs text-gray-500">
+      {/* Controls hint */}
+      <div className="absolute bottom-4 right-4 z-10 text-xs text-gray-600">
         Drag to rotate • Scroll to zoom
       </div>
 
+      {/* 3D Canvas */}
       {loading ? (
-        <div className="h-full w-full flex items-center justify-center text-gray-400 text-sm">Loading...</div>
+        <div className="h-full w-full flex items-center justify-center text-gray-500 text-sm">Loading...</div>
       ) : (
-        <Canvas camera={{ position: [12, 8, 12], fov: 45 }} shadows>
+        <Canvas camera={{ position: [8, 6, 8], fov: 45 }}>
           <Suspense fallback={null}>
             <Scene agents={agents} contractors={contractors} selectedAgent={selectedAgent} onSelectAgent={setSelectedAgent} />
           </Suspense>
