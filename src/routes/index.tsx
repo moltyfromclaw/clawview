@@ -229,11 +229,11 @@ function Dashboard() {
       <header className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-3xl">🦞</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🦞</span>
               <div>
-                <h1 className="text-xl font-bold">ClawView</h1>
-                <p className="text-sm text-gray-400">Agent Observability Platform</p>
+                <h1 className="text-lg font-semibold">ClawView</h1>
+                <p className="text-xs text-gray-400">Agent Observability</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -316,12 +316,12 @@ function Dashboard() {
             {efficiencyScore && (
               <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
                 <h2 className="text-lg font-semibold mb-4">Efficiency Score</h2>
-                <div className="flex items-center gap-8 mb-6">
+                <div className="flex items-center gap-6 mb-6">
                   <div className="text-center">
-                    <div className={`text-5xl font-bold ${getScoreColor(efficiencyScore.overall)}`}>
+                    <div className={`text-3xl font-bold ${getScoreColor(efficiencyScore.overall)}`}>
                       {efficiencyScore.overall}
                     </div>
-                    <div className="text-gray-400 text-sm mt-1">Overall Score</div>
+                    <div className="text-gray-400 text-xs mt-1">Overall Score</div>
                   </div>
                   <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4">
                     {efficiencyScore.breakdown.slice(0, 4).map(item => {
@@ -359,9 +359,9 @@ function Dashboard() {
                   insights.map(insight => {
                     const config = insightConfig[insight.type] || insightConfig.tip;
                     return (
-                      <div key={insight.id} className={`p-4 ${config.bgColor} border-l-4 ${config.borderColor}`}>
-                        <div className="flex items-start gap-3">
-                          <span className="text-2xl">{config.icon}</span>
+                      <div key={insight.id} className={`p-3 ${config.bgColor} border-l-2 ${config.borderColor}`}>
+                        <div className="flex items-start gap-2">
+                          <span className="text-base">{config.icon}</span>
                           <div className="flex-1">
                             <h3 className="font-semibold">{insight.title}</h3>
                             <p className="text-gray-400 text-sm mt-1">{insight.description}</p>
@@ -402,15 +402,15 @@ function Dashboard() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <button
                     onClick={() => setSelectedCategory('all')}
-                    className={`p-3 rounded-lg border transition-colors text-left ${
+                    className={`p-2.5 rounded-lg border transition-colors text-left ${
                       selectedCategory === 'all'
                         ? 'border-blue-500 bg-blue-500/10'
                         : 'border-gray-700 hover:border-gray-600'
                     }`}
                   >
-                    <div className="text-2xl mb-1">📊</div>
-                    <div className="font-medium">All Tasks</div>
-                    <div className="text-sm text-gray-400">{tasks.length} total</div>
+                    <div className="text-base mb-0.5">📊</div>
+                    <div className="text-sm font-medium">All Tasks</div>
+                    <div className="text-xs text-gray-400">{tasks.length} total</div>
                   </button>
                   {topCategories.slice(0, 5).map(([cat, data]) => {
                     const config = categoryConfig[cat] || categoryConfig.other;
@@ -418,15 +418,15 @@ function Dashboard() {
                       <button
                         key={cat}
                         onClick={() => setSelectedCategory(cat)}
-                        className={`p-3 rounded-lg border transition-colors text-left ${
+                        className={`p-2.5 rounded-lg border transition-colors text-left ${
                           selectedCategory === cat
                             ? 'border-blue-500 bg-blue-500/10'
                             : 'border-gray-700 hover:border-gray-600'
                         }`}
                       >
-                        <div className="text-2xl mb-1">{config.icon}</div>
-                        <div className="font-medium">{config.label}</div>
-                        <div className="text-sm text-gray-400">
+                        <div className="text-base mb-0.5">{config.icon}</div>
+                        <div className="text-sm font-medium">{config.label}</div>
+                        <div className="text-xs text-gray-400">
                           {data.count} tasks • {formatCost(data.totalCost)}
                         </div>
                       </button>
@@ -642,15 +642,15 @@ function Dashboard() {
               {agents.length === 0 ? (
                 <button
                   onClick={() => setShowAddAgentModal(true)}
-                  className="w-full bg-gray-900/50 rounded-xl border-2 border-dashed border-gray-700 p-8 text-center hover:border-gray-600 hover:bg-gray-900 transition-all group"
+                  className="w-full bg-gray-900/50 rounded-lg border border-dashed border-gray-700 p-6 text-center hover:border-gray-600 hover:bg-gray-900 transition-all group"
                 >
-                  <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">🖥️</div>
-                  <h3 className="text-lg font-medium text-gray-300 mb-1">No agents connected</h3>
-                  <p className="text-gray-500 text-sm mb-3">
-                    Connect your OpenClaw gateways to monitor and manage them here
+                  <div className="text-2xl mb-2">🖥️</div>
+                  <h3 className="text-sm font-medium text-gray-300 mb-1">No agents connected</h3>
+                  <p className="text-gray-500 text-xs mb-2">
+                    Connect your OpenClaw gateways to monitor them here
                   </p>
-                  <span className="inline-flex items-center gap-1.5 text-blue-400 text-sm font-medium">
-                    ➕ Add your first agent
+                  <span className="inline-flex items-center gap-1 text-blue-400 text-xs font-medium">
+                    + Add agent
                   </span>
                 </button>
               ) : (
@@ -659,7 +659,7 @@ function Dashboard() {
                     {agents.map(agent => (
                       <div key={agent.id} className="p-4 hover:bg-gray-800/50 transition-colors">
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-xl bg-gray-800 flex items-center justify-center text-2xl shrink-0">
+                          <div className="w-9 h-9 rounded-lg bg-gray-800 flex items-center justify-center text-base shrink-0">
                             {agent.avatar}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -709,15 +709,15 @@ function Dashboard() {
               {/* Empty state for contractors - always show since we don't track them yet */}
               <button
                 onClick={() => setShowSpawnModal(true)}
-                className="w-full bg-gray-900/50 rounded-xl border-2 border-dashed border-gray-700 p-8 text-center hover:border-purple-600/50 hover:bg-gray-900 transition-all group"
+                className="w-full bg-gray-900/50 rounded-lg border border-dashed border-gray-700 p-6 text-center hover:border-purple-600/50 hover:bg-gray-900 transition-all group"
               >
-                <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">🤖</div>
-                <h3 className="text-lg font-medium text-gray-300 mb-1">No contractors running</h3>
-                <p className="text-gray-500 text-sm mb-3">
-                  Spawn temporary agents to handle specific tasks like research, coding, or lead gen
+                <div className="text-2xl mb-2">🤖</div>
+                <h3 className="text-sm font-medium text-gray-300 mb-1">No contractors running</h3>
+                <p className="text-gray-500 text-xs mb-2">
+                  Spawn agents for tasks like research, coding, or lead gen
                 </p>
-                <span className="inline-flex items-center gap-1.5 text-purple-400 text-sm font-medium">
-                  🚀 Hire a contractor
+                <span className="inline-flex items-center gap-1 text-purple-400 text-xs font-medium">
+                  + Hire contractor
                 </span>
               </button>
             </div>
