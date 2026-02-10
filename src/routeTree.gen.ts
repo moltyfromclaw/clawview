@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as StandupRouteImport } from './routes/standup'
+import { Route as OfficeRouteImport } from './routes/office'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TasksTaskIdRouteImport } from './routes/tasks.$taskId'
 import { Route as ApiTasksRouteImport } from './routes/api/tasks'
@@ -23,6 +24,11 @@ import { Route as ApiRealtimeSessionRouteImport } from './routes/api/realtime/se
 const StandupRoute = StandupRouteImport.update({
   id: '/standup',
   path: '/standup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OfficeRoute = OfficeRouteImport.update({
+  id: '/office',
+  path: '/office',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -73,6 +79,7 @@ const ApiRealtimeSessionRoute = ApiRealtimeSessionRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/office': typeof OfficeRoute
   '/standup': typeof StandupRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/insights': typeof ApiInsightsRoute
@@ -85,6 +92,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/office': typeof OfficeRoute
   '/standup': typeof StandupRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/insights': typeof ApiInsightsRoute
@@ -98,6 +106,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/office': typeof OfficeRoute
   '/standup': typeof StandupRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/insights': typeof ApiInsightsRoute
@@ -112,6 +121,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/office'
     | '/standup'
     | '/api/agents'
     | '/api/insights'
@@ -124,6 +134,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/office'
     | '/standup'
     | '/api/agents'
     | '/api/insights'
@@ -136,6 +147,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/office'
     | '/standup'
     | '/api/agents'
     | '/api/insights'
@@ -149,6 +161,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  OfficeRoute: typeof OfficeRoute
   StandupRoute: typeof StandupRoute
   ApiAgentsRoute: typeof ApiAgentsRoute
   ApiInsightsRoute: typeof ApiInsightsRoute
@@ -166,6 +179,13 @@ declare module '@tanstack/react-router' {
       path: '/standup'
       fullPath: '/standup'
       preLoaderRoute: typeof StandupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/office': {
+      id: '/office'
+      path: '/office'
+      fullPath: '/office'
+      preLoaderRoute: typeof OfficeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -248,6 +268,7 @@ const ApiTasksRouteWithChildren = ApiTasksRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  OfficeRoute: OfficeRoute,
   StandupRoute: StandupRoute,
   ApiAgentsRoute: ApiAgentsRoute,
   ApiInsightsRoute: ApiInsightsRoute,

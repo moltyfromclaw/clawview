@@ -236,16 +236,22 @@ function Dashboard() {
                 <p className="text-xs text-gray-400">Agent Observability</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Link 
+                to="/office"
+                className="px-2.5 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg transition-colors"
+              >
+                🏢 Office
+              </Link>
               <button
                 onClick={() => setShowAddAgentModal(true)}
-                className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg flex items-center gap-1.5 transition-colors"
+                className="px-2.5 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg transition-colors"
               >
-                ➕ Add Agent
+                + Agent
               </button>
               <Link 
                 to="/standup"
-                className="px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-500 rounded-lg flex items-center gap-1.5 transition-colors"
+                className="px-2.5 py-1.5 text-xs bg-purple-600 hover:bg-purple-500 rounded-lg transition-colors"
               >
                 🎙️ Standup
               </Link>
