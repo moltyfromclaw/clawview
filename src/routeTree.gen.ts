@@ -9,12 +9,19 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as StandupRouteImport } from './routes/standup'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiTasksRouteImport } from './routes/api/tasks'
 import { Route as ApiStatsRouteImport } from './routes/api/stats'
 import { Route as ApiInsightsRouteImport } from './routes/api/insights'
 import { Route as ApiAgentsRouteImport } from './routes/api/agents'
+import { Route as ApiRealtimeSessionRouteImport } from './routes/api/realtime/session'
 
+const StandupRoute = StandupRouteImport.update({
+  id: '/standup',
+  path: '/standup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -40,53 +47,89 @@ const ApiAgentsRoute = ApiAgentsRouteImport.update({
   path: '/api/agents',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiRealtimeSessionRoute = ApiRealtimeSessionRouteImport.update({
+  id: '/api/realtime/session',
+  path: '/api/realtime/session',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/standup': typeof StandupRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/insights': typeof ApiInsightsRoute
   '/api/stats': typeof ApiStatsRoute
   '/api/tasks': typeof ApiTasksRoute
+  '/api/realtime/session': typeof ApiRealtimeSessionRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/standup': typeof StandupRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/insights': typeof ApiInsightsRoute
   '/api/stats': typeof ApiStatsRoute
   '/api/tasks': typeof ApiTasksRoute
+  '/api/realtime/session': typeof ApiRealtimeSessionRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/standup': typeof StandupRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/insights': typeof ApiInsightsRoute
   '/api/stats': typeof ApiStatsRoute
   '/api/tasks': typeof ApiTasksRoute
+  '/api/realtime/session': typeof ApiRealtimeSessionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/agents' | '/api/insights' | '/api/stats' | '/api/tasks'
-  fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/agents' | '/api/insights' | '/api/stats' | '/api/tasks'
-  id:
-    | '__root__'
+  fullPaths:
     | '/'
+    | '/standup'
     | '/api/agents'
     | '/api/insights'
     | '/api/stats'
     | '/api/tasks'
+    | '/api/realtime/session'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/standup'
+    | '/api/agents'
+    | '/api/insights'
+    | '/api/stats'
+    | '/api/tasks'
+    | '/api/realtime/session'
+  id:
+    | '__root__'
+    | '/'
+    | '/standup'
+    | '/api/agents'
+    | '/api/insights'
+    | '/api/stats'
+    | '/api/tasks'
+    | '/api/realtime/session'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  StandupRoute: typeof StandupRoute
   ApiAgentsRoute: typeof ApiAgentsRoute
   ApiInsightsRoute: typeof ApiInsightsRoute
   ApiStatsRoute: typeof ApiStatsRoute
   ApiTasksRoute: typeof ApiTasksRoute
+  ApiRealtimeSessionRoute: typeof ApiRealtimeSessionRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/standup': {
+      id: '/standup'
+      path: '/standup'
+      fullPath: '/standup'
+      preLoaderRoute: typeof StandupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -122,15 +165,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAgentsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/realtime/session': {
+      id: '/api/realtime/session'
+      path: '/api/realtime/session'
+      fullPath: '/api/realtime/session'
+      preLoaderRoute: typeof ApiRealtimeSessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  StandupRoute: StandupRoute,
   ApiAgentsRoute: ApiAgentsRoute,
   ApiInsightsRoute: ApiInsightsRoute,
   ApiStatsRoute: ApiStatsRoute,
   ApiTasksRoute: ApiTasksRoute,
+  ApiRealtimeSessionRoute: ApiRealtimeSessionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

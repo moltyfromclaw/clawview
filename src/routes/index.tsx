@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 
 export const Route = createFileRoute('/')({
@@ -214,6 +214,12 @@ function Dashboard() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <Link 
+                to="/standup"
+                className="px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-500 rounded-lg flex items-center gap-1.5 transition-colors"
+              >
+                🎙️ Standup
+              </Link>
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-500/20 text-green-400 text-xs">
                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
                 Live
