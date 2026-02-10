@@ -160,7 +160,7 @@ function CodingZone({ position }: { position: [number, number, number] }) {
       {/* Platform */}
       <mesh position={[0, 0.02, 0]}>
         <cylinderGeometry args={[2.5, 2.8, 0.05, 6]} />
-        <meshStandardMaterial color="#0c1222" metalness={0.9} roughness={0.1} />
+        <meshStandardMaterial color="#1e293b" metalness={0.5} roughness={0.3} />
       </mesh>
       
       {/* Neon edge */}
@@ -223,7 +223,7 @@ function ResearchZone({ position }: { position: [number, number, number] }) {
       {/* Platform */}
       <mesh position={[0, 0.02, 0]}>
         <cylinderGeometry args={[2.5, 2.8, 0.05, 8]} />
-        <meshStandardMaterial color="#1c1917" metalness={0.3} roughness={0.8} />
+        <meshStandardMaterial color="#78716c" metalness={0.3} roughness={0.6} />
       </mesh>
 
       {/* Bookshelves */}
@@ -295,7 +295,7 @@ function CommsZone({ position }: { position: [number, number, number] }) {
       {/* Platform */}
       <mesh position={[0, 0.02, 0]}>
         <cylinderGeometry args={[2.5, 2.8, 0.05, 8]} />
-        <meshStandardMaterial color="#0c1a0c" metalness={0.7} roughness={0.3} />
+        <meshStandardMaterial color="#475569" metalness={0.4} roughness={0.4} />
       </mesh>
 
       {/* Central antenna tower */}
@@ -352,7 +352,7 @@ function OpsZone({ position }: { position: [number, number, number] }) {
       {/* Platform */}
       <mesh position={[0, 0.02, 0]}>
         <cylinderGeometry args={[2.5, 2.8, 0.05, 8]} />
-        <meshStandardMaterial color="#1c0c0c" metalness={0.7} roughness={0.3} />
+        <meshStandardMaterial color="#64748b" metalness={0.4} roughness={0.4} />
       </mesh>
 
       {/* Curved control panel */}
@@ -415,10 +415,18 @@ function OpsZone({ position }: { position: [number, number, number] }) {
 // Floor
 function Floor() {
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
-      <planeGeometry args={[30, 30]} />
-      <meshStandardMaterial color="#080810" />
-    </mesh>
+    <group>
+      {/* Main floor */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
+        <planeGeometry args={[30, 30]} />
+        <meshStandardMaterial color="#e2e8f0" metalness={0.1} roughness={0.8} />
+      </mesh>
+      {/* Grid lines */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+        <planeGeometry args={[30, 30, 30, 30]} />
+        <meshBasicMaterial color="#cbd5e1" wireframe transparent opacity={0.3} />
+      </mesh>
+    </group>
   )
 }
 
@@ -440,12 +448,14 @@ function Scene({ agents, contractors, selectedAgent, onSelectAgent }: {
 
   return (
     <>
-      <ambientLight intensity={0.3} />
-      <directionalLight position={[10, 15, 10]} intensity={0.6} />
-      <pointLight position={[5, 3, 0]} intensity={0.5} color="#22d3ee" />
-      <pointLight position={[-5, 3, 0]} intensity={0.5} color="#fbbf24" />
-      <pointLight position={[0, 3, 5]} intensity={0.5} color="#22c55e" />
-      <pointLight position={[0, 3, -5]} intensity={0.5} color="#ef4444" />
+      <ambientLight intensity={0.8} />
+      <directionalLight position={[10, 20, 10]} intensity={1.2} castShadow />
+      <directionalLight position={[-10, 15, -10]} intensity={0.5} />
+      <hemisphereLight intensity={0.6} color="#ffffff" groundColor="#e2e8f0" />
+      <pointLight position={[5, 4, 0]} intensity={0.4} color="#22d3ee" />
+      <pointLight position={[-5, 4, 0]} intensity={0.4} color="#fbbf24" />
+      <pointLight position={[0, 4, 5]} intensity={0.4} color="#22c55e" />
+      <pointLight position={[0, 4, -5]} intensity={0.4} color="#ef4444" />
 
       <Floor />
       <ContactShadows position={[0, 0, 0]} opacity={0.3} blur={2} far={10} />
@@ -505,7 +515,7 @@ function Scene({ agents, contractors, selectedAgent, onSelectAgent }: {
         target={[0, 0.5, 0]}
       />
       
-      <Environment preset="night" />
+      <Environment preset="studio" />
     </>
   )
 }
@@ -562,7 +572,7 @@ function OfficePage() {
   const activeAgent = agents.find(a => a.id === selectedAgent)
 
   return (
-    <div className="h-screen w-screen bg-gray-950 relative">
+    <div className="h-screen w-screen bg-slate-200 relative">
       <div className="absolute top-0 left-0 right-0 z-10 p-3 flex items-center justify-between pointer-events-none">
         <Link to="/" className="text-xs text-gray-400 hover:text-white bg-gray-900/80 px-3 py-1.5 rounded backdrop-blur-sm pointer-events-auto">
           ← Dashboard
