@@ -10,7 +10,6 @@ interface Step {
   type: 'user' | 'assistant' | 'tool_call' | 'tool_result'
   timestamp: string
   durationMs: number
-  name?: string
   content?: string
   toolName?: string
   toolArgs?: Record<string, unknown>
@@ -66,24 +65,16 @@ function formatDateTime(dateStr: string): string {
   })
 }
 
-const stepTypeConfig: Record<string, { icon: string; color: string; bgColor: string; label: string }> = {
-  user: { icon: '👤', color: 'text-blue-400', bgColor: 'bg-blue-500', label: 'User' },
-  assistant: { icon: '🤖', color: 'text-purple-400', bgColor: 'bg-purple-500', label: 'Assistant' },
-  tool_call: { icon: '⚡', color: 'text-yellow-400', bgColor: 'bg-yellow-500', label: 'Tool Call' },
-  tool_result: { icon: '📋', color: 'text-green-400', bgColor: 'bg-green-500', label: 'Tool Result' },
+const toolIcons: Record<string, string> = {
+  exec: '⚡', browser: '🌐', Read: '📖', Write: '✍️', Edit: '✏️',
+  web_search: '🔍', web_fetch: '📥', message: '💬', cron: '⏰', memory_search: '🧠',
 }
 
-const toolIcons: Record<string, string> = {
-  exec: '⚡',
-  browser: '🌐',
-  Read: '📖',
-  Write: '✍️',
-  Edit: '✏️',
-  web_search: '🔍',
-  web_fetch: '📥',
-  message: '💬',
-  cron: '⏰',
-  memory_search: '🧠',
+const stepColors: Record<string, string> = {
+  user: 'bg-blue-500',
+  assistant: 'bg-purple-500',
+  tool_call: 'bg-amber-500',
+  tool_result: 'bg-green-500',
 }
 
 function TaskDetail() {
@@ -91,17 +82,15 @@ function TaskDetail() {
   const [task, setTask] = useState<TaskDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set())
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [expandedStep, setExpandedStep] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchTask() {
       try {
         const res = await fetch(`/api/tasks/${taskId}`)
-        if (!res.ok) {
-          throw new Error('Task not found')
-        }
-        const data = await res.json()
-        setTask(data)
+        if (!res.ok) throw new Error('Task not found')
+        setTask(await res.json())
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load task')
       } finally {
@@ -111,22 +100,10 @@ function TaskDetail() {
     fetchTask()
   }, [taskId])
 
-  const toggleStep = (stepId: string) => {
-    setExpandedSteps(prev => {
-      const next = new Set(prev)
-      if (next.has(stepId)) {
-        next.delete(stepId)
-      } else {
-        next.add(stepId)
-      }
-      return next
-    })
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
-        <div className="text-xl">Loading task...</div>
+        <div className="animate-pulse">Loading...</div>
       </div>
     )
   }
@@ -134,213 +111,172 @@ function TaskDetail() {
   if (error || !task) {
     return (
       <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center gap-4">
-        <div className="text-xl text-red-400">{error || 'Task not found'}</div>
-        <Link to="/" className="text-blue-400 hover:underline">← Back to dashboard</Link>
+        <div className="text-red-400">{error || 'Task not found'}</div>
+        <Link to="/" className="text-blue-400 hover:underline text-sm">← Back to dashboard</Link>
       </div>
     )
   }
 
-  // Calculate timeline scale
+  // Compute useful stats
+  const toolCalls = task.steps.filter(s => s.type === 'tool_call')
+  const uniqueTools = [...new Set(toolCalls.map(s => s.toolName))]
+  const topCostStep = task.steps.reduce((max, s) => s.cost > max.cost ? s : max, task.steps[0])
+  
+  // Timeline data
   const taskStart = new Date(task.startTime).getTime()
   const taskEnd = new Date(task.endTime).getTime()
   const totalDuration = taskEnd - taskStart || 1
 
-  // Filter steps with timing for Gantt (exclude tool_result as they're instant)
-  const timedSteps = task.steps.filter(s => s.type !== 'tool_result')
-
   return (
     <div className="min-h-screen bg-gray-950 text-white">
-      {/* Header */}
-      <header className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Link to="/" className="text-gray-400 hover:text-white transition-colors">
-              ← Back
-            </Link>
-            <div className="flex-1">
-              <h1 className="text-lg font-semibold">{task.summary}</h1>
-              <p className="text-sm text-gray-400">{formatDateTime(task.startTime)}</p>
-            </div>
-            <div className="text-right">
-              <div className="text-green-400 font-medium">{formatCost(task.totalCost)}</div>
-              <div className="text-sm text-gray-400">{formatDuration(task.durationMs)}</div>
-            </div>
-          </div>
+      {/* Minimal Header */}
+      <header className="border-b border-gray-800 bg-gray-900/50">
+        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-4">
+          <Link to="/" className="text-gray-400 hover:text-white text-sm">← Back</Link>
+          <span className="text-gray-600">|</span>
+          <span className="text-sm text-gray-400">{formatDateTime(task.startTime)}</span>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-6">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
-            <div className="text-gray-400 text-sm mb-1">Total Cost</div>
-            <div className="text-2xl font-bold text-green-400">{formatCost(task.totalCost)}</div>
-          </div>
-          <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
-            <div className="text-gray-400 text-sm mb-1">Duration</div>
-            <div className="text-2xl font-bold">{formatDuration(task.durationMs)}</div>
-          </div>
-          <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
-            <div className="text-gray-400 text-sm mb-1">Steps</div>
-            <div className="text-2xl font-bold">{task.steps.length}</div>
-          </div>
-          <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
-            <div className="text-gray-400 text-sm mb-1">Tokens</div>
-            <div className="text-2xl font-bold text-blue-400">
-              {((task.totalInputTokens + task.totalOutputTokens) / 1000).toFixed(1)}K
-            </div>
-          </div>
-        </div>
-
-        {/* Gantt Chart */}
-        <div className="bg-gray-900 rounded-xl border border-gray-800 mb-8 overflow-hidden">
-          <div className="p-4 border-b border-gray-800">
-            <h2 className="text-lg font-semibold">Timeline</h2>
-            <p className="text-sm text-gray-400">
-              {formatTime(task.startTime)} → {formatTime(task.endTime)}
+      <main className="max-w-3xl mx-auto px-4 py-8">
+        
+        {/* ============ SUMMARY SECTION ============ */}
+        <section className="mb-8">
+          <h1 className="text-2xl font-semibold mb-2">{task.summary}</h1>
+          
+          {task.triggerText && (
+            <p className="text-gray-400 text-sm mb-4 line-clamp-2">
+              Triggered by: "{task.triggerText.slice(0, 100)}..."
             </p>
-          </div>
-          <div className="p-4">
-            {/* Timeline header */}
-            <div className="flex items-center gap-4 mb-4 text-xs text-gray-500">
-              <div className="w-32 shrink-0">Step</div>
-              <div className="flex-1 flex justify-between">
-                <span>{formatTime(task.startTime)}</span>
-                <span>{formatTime(task.endTime)}</span>
-              </div>
-              <div className="w-20 text-right">Cost</div>
+          )}
+
+          {/* Key metrics - horizontal row */}
+          <div className="flex items-center gap-6 text-sm">
+            <div>
+              <span className="text-gray-500">Cost</span>
+              <span className="ml-2 text-green-400 font-medium">{formatCost(task.totalCost)}</span>
             </div>
+            <div>
+              <span className="text-gray-500">Duration</span>
+              <span className="ml-2 text-white font-medium">{formatDuration(task.durationMs)}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Steps</span>
+              <span className="ml-2 text-white font-medium">{task.steps.length}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Tools</span>
+              <span className="ml-2 text-white font-medium">{uniqueTools.length}</span>
+            </div>
+          </div>
+        </section>
 
-            {/* Gantt bars */}
-            <div className="space-y-2">
-              {timedSteps.map((step, index) => {
+        {/* ============ QUICK LOOK SECTION ============ */}
+        <section className="mb-8">
+          <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">Quick Look</h2>
+          
+          {/* Mini timeline bar */}
+          <div className="bg-gray-900 rounded-lg p-4 border border-gray-800 mb-4">
+            <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+              <span>{formatTime(task.startTime)}</span>
+              <span>{formatTime(task.endTime)}</span>
+            </div>
+            <div className="h-8 bg-gray-800 rounded-full overflow-hidden flex">
+              {task.steps.filter(s => s.type !== 'tool_result').map((step, i) => {
                 const stepTime = new Date(step.timestamp).getTime()
-                const stepEnd = stepTime + Math.max(step.durationMs, totalDuration * 0.02) // Min 2% width
-                const leftPercent = ((stepTime - taskStart) / totalDuration) * 100
-                const widthPercent = Math.max(((stepEnd - stepTime) / totalDuration) * 100, 2)
-                const config = stepTypeConfig[step.type] || stepTypeConfig.assistant
-
+                const width = Math.max((step.durationMs / totalDuration) * 100, 1)
                 return (
-                  <div key={step.id} className="flex items-center gap-4 group">
-                    <div className="w-32 shrink-0 flex items-center gap-2 text-sm">
-                      <span>{config.icon}</span>
-                      <span className={`${config.color} truncate`}>
-                        {step.toolName || config.label}
-                      </span>
-                    </div>
-                    <div className="flex-1 h-8 bg-gray-800 rounded relative">
-                      <div
-                        className={`absolute top-1 bottom-1 ${config.bgColor} rounded opacity-80 group-hover:opacity-100 transition-opacity`}
-                        style={{
-                          left: `${Math.min(leftPercent, 98)}%`,
-                          width: `${Math.min(widthPercent, 100 - leftPercent)}%`,
-                        }}
-                      />
-                      {/* Duration tooltip on hover */}
-                      <div
-                        className="absolute top-1 bottom-1 flex items-center text-xs text-white font-medium px-2 pointer-events-none"
-                        style={{ left: `${Math.min(leftPercent, 98)}%` }}
-                      >
-                        {step.durationMs > 100 && formatDuration(step.durationMs)}
-                      </div>
-                    </div>
-                    <div className="w-20 text-right text-sm">
-                      {step.cost > 0 && (
-                        <span className="text-green-400">{formatCost(step.cost)}</span>
-                      )}
-                    </div>
-                  </div>
+                  <div
+                    key={step.id}
+                    className={`${stepColors[step.type]} opacity-80 hover:opacity-100 transition-opacity`}
+                    style={{ width: `${width}%` }}
+                    title={`${step.toolName || step.type}: ${formatDuration(step.durationMs)}`}
+                  />
                 )
               })}
             </div>
+            <div className="flex items-center gap-4 mt-3 text-xs">
+              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500"/> User</div>
+              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-purple-500"/> Response</div>
+              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500"/> Tool</div>
+            </div>
+          </div>
 
-            {/* Legend */}
-            <div className="flex items-center gap-6 mt-6 pt-4 border-t border-gray-800">
-              {Object.entries(stepTypeConfig).filter(([k]) => k !== 'tool_result').map(([key, config]) => (
-                <div key={key} className="flex items-center gap-2 text-sm">
-                  <div className={`w-3 h-3 rounded ${config.bgColor}`} />
-                  <span className="text-gray-400">{config.label}</span>
-                </div>
+          {/* Tools used - chips */}
+          {uniqueTools.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {uniqueTools.map(tool => (
+                <span key={tool} className="px-3 py-1 bg-gray-800 rounded-full text-sm flex items-center gap-1.5">
+                  <span>{toolIcons[tool || ''] || '🔧'}</span>
+                  <span className="text-gray-300">{tool}</span>
+                </span>
               ))}
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* Cost Breakdown */}
-        <div className="bg-gray-900 rounded-xl border border-gray-800 mb-8 overflow-hidden">
-          <div className="p-4 border-b border-gray-800">
-            <h2 className="text-lg font-semibold">Cost Breakdown</h2>
-          </div>
-          <div className="p-4">
-            <div className="space-y-3">
-              {task.steps.filter(s => s.cost > 0).map(step => {
-                const config = stepTypeConfig[step.type] || stepTypeConfig.assistant
-                const costPercent = (step.cost / task.totalCost) * 100
+          {/* Cost highlight if there's a dominant step */}
+          {topCostStep && topCostStep.cost > task.totalCost * 0.3 && (
+            <div className="bg-gray-900/50 rounded-lg p-3 border border-gray-800 text-sm">
+              <span className="text-gray-400">Most expensive step:</span>
+              <span className="ml-2 text-white">{topCostStep.toolName || 'Response'}</span>
+              <span className="ml-2 text-green-400">{formatCost(topCostStep.cost)}</span>
+              <span className="text-gray-500 ml-1">
+                ({Math.round((topCostStep.cost / task.totalCost) * 100)}%)
+              </span>
+            </div>
+          )}
+        </section>
+
+        {/* ============ ADVANCED SECTION ============ */}
+        <section>
+          <button
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors mb-4"
+          >
+            <svg
+              className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-90' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            <span className="font-medium uppercase tracking-wider">
+              {showAdvanced ? 'Hide' : 'Show'} Step Details
+            </span>
+            <span className="text-gray-600">({task.steps.length} steps)</span>
+          </button>
+
+          {showAdvanced && (
+            <div className="space-y-2">
+              {task.steps.map((step, index) => {
+                const isExpanded = expandedStep === step.id
+                const icon = step.toolName ? (toolIcons[step.toolName] || '🔧') : 
+                  step.type === 'user' ? '👤' : step.type === 'assistant' ? '💬' : '📋'
 
                 return (
-                  <div key={step.id} className="flex items-center gap-4">
-                    <div className="w-48 flex items-center gap-2 text-sm">
-                      <span>{step.toolName ? (toolIcons[step.toolName] || '🔧') : config.icon}</span>
-                      <span className="text-gray-300 truncate">
-                        {step.toolName || config.label}
-                      </span>
-                    </div>
-                    <div className="flex-1 h-6 bg-gray-800 rounded overflow-hidden">
-                      <div
-                        className={`h-full ${config.bgColor} opacity-60`}
-                        style={{ width: `${costPercent}%` }}
-                      />
-                    </div>
-                    <div className="w-24 text-right">
-                      <span className="text-green-400 font-medium">{formatCost(step.cost)}</span>
-                      <span className="text-gray-500 text-xs ml-1">({costPercent.toFixed(0)}%)</span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Steps Detail */}
-        <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-          <div className="p-4 border-b border-gray-800">
-            <h2 className="text-lg font-semibold">Steps</h2>
-          </div>
-          <div className="divide-y divide-gray-800">
-            {task.steps.map((step, index) => {
-              const config = stepTypeConfig[step.type] || stepTypeConfig.assistant
-              const isExpanded = expandedSteps.has(step.id)
-
-              return (
-                <div key={step.id} className="hover:bg-gray-800/50 transition-colors">
-                  <button
-                    onClick={() => toggleStep(step.id)}
-                    className="w-full p-4 text-left flex items-start gap-4"
+                  <div
+                    key={step.id}
+                    className="bg-gray-900 rounded-lg border border-gray-800 overflow-hidden"
                   >
-                    <div className="flex items-center gap-2 text-gray-500 text-sm w-16 shrink-0">
-                      <span className="font-mono">#{index + 1}</span>
-                    </div>
-                    <div className={`w-8 h-8 rounded-lg ${config.bgColor}/20 flex items-center justify-center text-lg shrink-0`}>
-                      {step.toolName ? (toolIcons[step.toolName] || '🔧') : config.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`font-medium ${config.color}`}>
-                          {step.toolName || config.label}
+                    <button
+                      onClick={() => setExpandedStep(isExpanded ? null : step.id)}
+                      className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-gray-800/50 transition-colors"
+                    >
+                      <span className="text-gray-600 text-xs font-mono w-6">{index + 1}</span>
+                      <span className="text-lg">{icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm text-white">
+                          {step.toolName || (step.type === 'user' ? 'User message' : 'Response')}
                         </span>
-                        <span className="text-xs text-gray-500">{formatTime(step.timestamp)}</span>
                         {step.durationMs > 0 && (
-                          <span className="text-xs text-gray-600">• {formatDuration(step.durationMs)}</span>
+                          <span className="text-xs text-gray-500 ml-2">
+                            {formatDuration(step.durationMs)}
+                          </span>
                         )}
                       </div>
-                      <p className="text-sm text-gray-400 mt-1 line-clamp-2">
-                        {step.content || (step.toolArgs && JSON.stringify(step.toolArgs).slice(0, 100)) || step.toolResult?.slice(0, 100) || '-'}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
                       {step.cost > 0 && (
-                        <div className="text-green-400 text-sm">{formatCost(step.cost)}</div>
+                        <span className="text-xs text-green-400">{formatCost(step.cost)}</span>
                       )}
                       <svg
                         className={`w-4 h-4 text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
@@ -350,47 +286,50 @@ function TaskDetail() {
                       >
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
-                    </div>
-                  </button>
+                    </button>
 
-                  {isExpanded && (
-                    <div className="px-4 pb-4 ml-28">
-                      <div className="bg-gray-800 rounded-lg p-4 text-sm">
-                        {step.content && (
-                          <div className="mb-4">
-                            <div className="text-gray-400 text-xs mb-1">Content</div>
-                            <div className="text-gray-200 whitespace-pre-wrap">{step.content}</div>
+                    {isExpanded && (
+                      <div className="px-4 pb-4 border-t border-gray-800">
+                        <div className="pt-3 space-y-3 text-sm">
+                          {step.content && (
+                            <div>
+                              <div className="text-xs text-gray-500 mb-1">Content</div>
+                              <div className="text-gray-300 whitespace-pre-wrap bg-gray-800/50 rounded p-2 text-xs max-h-32 overflow-y-auto">
+                                {step.content}
+                              </div>
+                            </div>
+                          )}
+                          {step.toolArgs && (
+                            <div>
+                              <div className="text-xs text-gray-500 mb-1">Arguments</div>
+                              <pre className="text-gray-300 bg-gray-800/50 rounded p-2 text-xs overflow-x-auto max-h-32 overflow-y-auto">
+                                {JSON.stringify(step.toolArgs, null, 2)}
+                              </pre>
+                            </div>
+                          )}
+                          {step.toolResult && (
+                            <div>
+                              <div className="text-xs text-gray-500 mb-1">Result</div>
+                              <pre className="text-gray-300 bg-gray-800/50 rounded p-2 text-xs overflow-x-auto max-h-32 overflow-y-auto">
+                                {step.toolResult}
+                              </pre>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-4 text-xs text-gray-500 pt-2">
+                            <span>{formatTime(step.timestamp)}</span>
+                            {step.inputTokens > 0 && <span>{step.inputTokens} in</span>}
+                            {step.outputTokens > 0 && <span>{step.outputTokens} out</span>}
+                            {step.model && <span className="text-gray-600">{step.model}</span>}
                           </div>
-                        )}
-                        {step.toolArgs && (
-                          <div className="mb-4">
-                            <div className="text-gray-400 text-xs mb-1">Arguments</div>
-                            <pre className="text-gray-200 overflow-x-auto text-xs">
-                              {JSON.stringify(step.toolArgs, null, 2)}
-                            </pre>
-                          </div>
-                        )}
-                        {step.toolResult && (
-                          <div>
-                            <div className="text-gray-400 text-xs mb-1">Result</div>
-                            <pre className="text-gray-200 overflow-x-auto text-xs max-h-48 overflow-y-auto">
-                              {step.toolResult}
-                            </pre>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-6 mt-4 pt-4 border-t border-gray-700 text-xs text-gray-500">
-                          {step.inputTokens > 0 && <span>Input: {step.inputTokens} tokens</span>}
-                          {step.outputTokens > 0 && <span>Output: {step.outputTokens} tokens</span>}
-                          {step.model && <span>Model: {step.model}</span>}
                         </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </section>
       </main>
     </div>
   )
