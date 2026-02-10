@@ -7,6 +7,9 @@ import tailwindcss from '@tailwindcss/vite'
 import { fileURLToPath, URL } from 'url'
 
 const config = defineConfig({
+  server: {
+    allowedHosts: ['ms-mac-mini.tail901772.ts.net', 'localhost'],
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
