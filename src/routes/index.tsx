@@ -232,11 +232,98 @@ function Dashboard() {
     }
   }
 
+  // Fetch status from a remote agent's gateway via WebSocket
+  const fetchAgentStatus = async (agent: Agent): Promise<Partial<Agent>> => {
+    return new Promise((resolve) => {
+      try {
+        let wsUrl = agent.gatewayUrl
+        if (wsUrl.startsWith('http://')) wsUrl = 'ws://' + wsUrl.slice(7)
+        else if (wsUrl.startsWith('https://')) wsUrl = 'wss://' + wsUrl.slice(8)
+        else if (!wsUrl.startsWith('ws://') && !wsUrl.startsWith('wss://')) wsUrl = 'wss://' + wsUrl
+        wsUrl = wsUrl.replace(/\/$/, '') + '/ws'
+
+        const ws = new WebSocket(wsUrl)
+        const timeout = setTimeout(() => {
+          ws.close()
+          resolve({ gatewayStatus: 'offline' })
+        }, 5000)
+
+        ws.onopen = () => {
+          // Send connect handshake
+          ws.send(JSON.stringify({
+            type: 'req', id: 'connect-1', method: 'connect',
+            params: {
+              minProtocol: 1, maxProtocol: 1,
+              client: { id: 'clawview', version: '1.0.0', platform: 'web', mode: 'probe' },
+              caps: [], role: 'operator', scopes: ['operator.admin'],
+              auth: agent.gatewayToken ? { token: agent.gatewayToken } : undefined
+            }
+          }))
+        }
+
+        ws.onmessage = (event) => {
+          clearTimeout(timeout)
+          try {
+            const data = JSON.parse(event.data)
+            if (data.type === 'res' && data.ok) {
+              // Connected! Now request status
+              ws.send(JSON.stringify({ type: 'req', id: 'status-1', method: 'status', params: {} }))
+            } else if (data.id === 'status-1' && data.type === 'res') {
+              ws.close()
+              const status = data.payload || {}
+              resolve({
+                gatewayStatus: 'online',
+                status: status.sessions?.active > 0 ? 'active' : 'idle',
+                activeSessions: status.sessions?.total || 0,
+                taskCount: status.sessions?.total || 0,
+              })
+            } else if (data.type === 'evt' && data.event === 'connect.challenge') {
+              // Gateway is alive but needs device auth
+              ws.close()
+              resolve({ gatewayStatus: 'online', status: 'idle' })
+            }
+          } catch {
+            ws.close()
+            resolve({ gatewayStatus: 'error' })
+          }
+        }
+
+        ws.onerror = () => {
+          clearTimeout(timeout)
+          resolve({ gatewayStatus: 'offline' })
+        }
+
+        ws.onclose = () => clearTimeout(timeout)
+      } catch {
+        resolve({ gatewayStatus: 'offline' })
+      }
+    })
+  }
+
+  // Update all agents with live status
+  const refreshAgentStatuses = async (agentList: Agent[]) => {
+    const updated = await Promise.all(
+      agentList.map(async (agent) => {
+        if (agent.gatewayUrl && agent.id !== 'local') {
+          const status = await fetchAgentStatus(agent)
+          return { ...agent, ...status }
+        }
+        return agent
+      })
+    )
+    setAgents(updated)
+  }
+
   useEffect(() => {
     async function fetchData() {
       // First, always load localStorage agents (works in SAAS/Workers mode)
       const localAgents = loadAgentsWithLocalStorage([])
       setAgents(localAgents)
+      
+      // Refresh agent statuses via WebSocket
+      if (localAgents.length > 0) {
+        refreshAgentStatuses(localAgents)
+      }
       
       try {
         const [statsRes, tasksRes, insightsRes, agentsRes] = await Promise.all([
@@ -259,7 +346,10 @@ function Dashboard() {
           setTaskStats(tasksData.stats || null);
           setInsights(insightsData.insights || []);
           setEfficiencyScore(insightsData.efficiencyScore || null);
-          setAgents(loadAgentsWithLocalStorage(agentsData.agents || []));
+          
+          const mergedAgents = loadAgentsWithLocalStorage(agentsData.agents || [])
+          setAgents(mergedAgents)
+          refreshAgentStatuses(mergedAgents)
         }
       } catch (error) {
         // In SAAS mode, API calls will fail - that's ok, we have localStorage agents
