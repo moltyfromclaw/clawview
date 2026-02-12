@@ -62,25 +62,84 @@ export function AddAgentModal({ open, onOpenChange, onAgentAdded }: AddAgentModa
     setVerifySuccess(false)
 
     try {
-      const response = await fetch(`${formData.gatewayUrl}/status`, {
-        method: 'GET',
-        headers: formData.gatewayToken
-          ? { Authorization: `Bearer ${formData.gatewayToken}` }
-          : {},
-      })
+      // Convert HTTP URL to WebSocket URL
+      let wsUrl = formData.gatewayUrl.trim()
+      if (wsUrl.startsWith('http://')) {
+        wsUrl = 'ws://' + wsUrl.slice(7)
+      } else if (wsUrl.startsWith('https://')) {
+        wsUrl = 'wss://' + wsUrl.slice(8)
+      } else if (!wsUrl.startsWith('ws://') && !wsUrl.startsWith('wss://')) {
+        wsUrl = 'wss://' + wsUrl
+      }
+      // Remove trailing slash
+      wsUrl = wsUrl.replace(/\/$/, '')
+      // Add /ws path for WebSocket endpoint
+      wsUrl = wsUrl + '/ws'
+      
+      // Add token as query param if provided
+      if (formData.gatewayToken) {
+        wsUrl = wsUrl + '?token=' + encodeURIComponent(formData.gatewayToken)
+      }
 
-      if (response.ok) {
-        setVerifySuccess(true)
-        setTimeout(() => {
-          onAgentAdded?.()
-          handleOpenChange(false)
-        }, 1500)
-      } else {
-        setVerifyError(`Connection failed: ${response.status} ${response.statusText}`)
+      // Try to connect via WebSocket with timeout
+      const ws = new WebSocket(wsUrl)
+      const timeoutId = setTimeout(() => {
+        ws.close()
+        setVerifyError('Connection timed out after 10 seconds')
+        setVerifying(false)
+      }, 10000)
+
+      ws.onopen = () => {
+        clearTimeout(timeoutId)
+        // Send a simple RPC request to verify connection
+        ws.send(JSON.stringify({ 
+          jsonrpc: '2.0', 
+          id: 1, 
+          method: 'gateway.status', 
+          params: {} 
+        }))
+      }
+
+      ws.onmessage = (event) => {
+        clearTimeout(timeoutId)
+        try {
+          const data = JSON.parse(event.data)
+          // Any valid JSON response means we're connected
+          if (data.result || data.error?.code) {
+            setVerifySuccess(true)
+            ws.close()
+            setTimeout(() => {
+              onAgentAdded?.()
+              handleOpenChange(false)
+            }, 1500)
+          } else {
+            setVerifyError('Unexpected response from gateway')
+          }
+        } catch {
+          setVerifyError('Invalid response from gateway')
+        }
+        setVerifying(false)
+      }
+
+      ws.onerror = () => {
+        clearTimeout(timeoutId)
+        setVerifyError('WebSocket connection failed. Check the URL and token.')
+        setVerifying(false)
+      }
+
+      ws.onclose = (event) => {
+        clearTimeout(timeoutId)
+        if (!verifySuccess && event.code !== 1000) {
+          if (event.reason) {
+            setVerifyError(`Connection closed: ${event.reason}`)
+          } else if (event.code === 1008) {
+            setVerifyError('Unauthorized: Check your gateway token')
+          }
+          setVerifying(false)
+        }
       }
     } catch (error) {
       setVerifyError(`Could not connect: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    } finally {
       setVerifying(false)
     }
   }
