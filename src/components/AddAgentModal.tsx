@@ -20,9 +20,26 @@ interface ConnectFormData {
   name: string
   role: string
   team: string
+  icon: string
   gatewayUrl: string
   gatewayToken: string
 }
+
+const TEAM_OPTIONS = [
+  { value: 'engineering', label: 'Engineering', icon: '💻' },
+  { value: 'sales', label: 'Sales', icon: '💼' },
+  { value: 'marketing', label: 'Marketing', icon: '📣' },
+  { value: 'research', label: 'Research', icon: '🔬' },
+  { value: 'operations', label: 'Operations', icon: '⚙️' },
+  { value: 'support', label: 'Support', icon: '🎧' },
+  { value: 'personal', label: 'Personal', icon: '👤' },
+]
+
+const ICON_OPTIONS = [
+  '🤖', '🦞', '🐙', '🦊', '🐺', '🦅', '🐉', '🦄',
+  '🔮', '⚡', '🎯', '🚀', '💎', '🌟', '🔥', '💡',
+  '🛡️', '⚔️', '🎮', '🎨', '📊', '🧠', '👁️', '🌐',
+]
 
 export function AddAgentModal({ open, onOpenChange, onAgentAdded }: AddAgentModalProps) {
   const [step, setStep] = useState<Step>('choose')
@@ -30,9 +47,11 @@ export function AddAgentModal({ open, onOpenChange, onAgentAdded }: AddAgentModa
     name: '',
     role: '',
     team: '',
+    icon: '🤖',
     gatewayUrl: '',
     gatewayToken: '',
   })
+  const [showIconPicker, setShowIconPicker] = useState(false)
   const [verifying, setVerifying] = useState(false)
   const [verifyError, setVerifyError] = useState<string | null>(null)
   const [verifySuccess, setVerifySuccess] = useState(false)
@@ -43,9 +62,11 @@ export function AddAgentModal({ open, onOpenChange, onAgentAdded }: AddAgentModa
       name: '',
       role: '',
       team: '',
+      icon: '🤖',
       gatewayUrl: '',
       gatewayToken: '',
     })
+    setShowIconPicker(false)
     setVerifying(false)
     setVerifyError(null)
     setVerifySuccess(false)
@@ -204,17 +225,49 @@ export function AddAgentModal({ open, onOpenChange, onAgentAdded }: AddAgentModa
 
         {step === 'connect-form' && (
           <div className="space-y-4 pt-2">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Agent Name *
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., My Pi Agent"
-                className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              />
+            {/* Icon picker + Name row */}
+            <div className="flex gap-3">
+              <div className="relative">
+                <label className="block text-sm font-medium text-gray-300 mb-2">Icon</label>
+                <button
+                  type="button"
+                  onClick={() => setShowIconPicker(!showIconPicker)}
+                  className="w-14 h-11 bg-gray-800 border border-gray-700 rounded-lg text-2xl flex items-center justify-center hover:border-gray-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                >
+                  {formData.icon}
+                </button>
+                {showIconPicker && (
+                  <div className="absolute z-10 mt-1 p-2 bg-gray-800 border border-gray-700 rounded-lg shadow-xl grid grid-cols-8 gap-1 w-64">
+                    {ICON_OPTIONS.map((icon) => (
+                      <button
+                        key={icon}
+                        type="button"
+                        onClick={() => {
+                          setFormData({ ...formData, icon })
+                          setShowIconPicker(false)
+                        }}
+                        className={`w-7 h-7 rounded text-lg flex items-center justify-center hover:bg-gray-700 ${
+                          formData.icon === icon ? 'bg-blue-500/30 ring-1 ring-blue-500' : ''
+                        }`}
+                      >
+                        {icon}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Agent Name *
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="e.g., My Pi Agent"
+                  className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -230,13 +283,18 @@ export function AddAgentModal({ open, onOpenChange, onAgentAdded }: AddAgentModa
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Team</label>
-                <input
-                  type="text"
+                <select
                   value={formData.team}
                   onChange={(e) => setFormData({ ...formData, team: e.target.value })}
-                  placeholder="e.g., Engineering"
-                  className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                />
+                  className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">Select team...</option>
+                  {TEAM_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.icon} {opt.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -280,16 +338,20 @@ export function AddAgentModal({ open, onOpenChange, onAgentAdded }: AddAgentModa
         {step === 'connect-verify' && (
           <div className="space-y-4 pt-2">
             <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-              <h3 className="font-medium text-white mb-3">Connection Details</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Name:</span>
-                  <span className="text-white">{formData.name}</span>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-12 h-12 rounded-xl bg-gray-700/50 flex items-center justify-center text-2xl">
+                  {formData.icon}
                 </div>
-                {formData.role && (
+                <div>
+                  <h3 className="font-medium text-white">{formData.name}</h3>
+                  {formData.role && <p className="text-sm text-gray-400">{formData.role}</p>}
+                </div>
+              </div>
+              <div className="space-y-2 text-sm">
+                {formData.team && (
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Role:</span>
-                    <span className="text-white">{formData.role}</span>
+                    <span className="text-gray-400">Team:</span>
+                    <span className="text-white">{TEAM_OPTIONS.find(t => t.value === formData.team)?.label || formData.team}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
