@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { AddAgentModal } from '../components/AddAgentModal'
 import { SpawnAgentModal } from '../components/SpawnAgentModal'
 import { LandingPage } from '../components/LandingPage'
+import { fetchRemoteDashboardData, type GatewayConfig } from '../lib/remote-gateway'
 
 // Check if running in SAAS mode (set via env var or query param for testing)
 const isSaasMode = () => {
@@ -33,11 +34,12 @@ const getSubdomainGateway = (): { name: string; url: string; token?: string } | 
   const subdomain = match[1]
   
   // Known agent gateways with their ClawView API URLs
+  // Note: token should be the gateway password (OPENCLAW_GATEWAY_PASSWORD), not the config token
   const gateways: Record<string, { name: string; url: string; token?: string; apiUrl?: string }> = {
     'molty': {
       name: 'Molty',
       url: 'https://ms-mac-mini.tail901772.ts.net',
-      token: 'e78df07ea225de5e17a2aed41ab2a07c8b3ac3f9ce56dadd',
+      token: 'dpz9XTthT8oKhIT', // Gateway password
       apiUrl: 'http://100.115.232.19:3201' // Local ClawView API (Tailscale)
     }
   }
@@ -369,6 +371,31 @@ function Dashboard() {
     setAgents(updated)
   }
 
+  // Get the primary gateway to fetch data from (subdomain or first localStorage agent)
+  const getPrimaryGateway = (): GatewayConfig | null => {
+    // Check subdomain gateway first
+    const subdomainGateway = getSubdomainGateway()
+    if (subdomainGateway) {
+      return { url: subdomainGateway.url, token: subdomainGateway.token }
+    }
+    
+    // Check localStorage agents
+    try {
+      const stored = localStorage.getItem('clawview-agents')
+      if (stored) {
+        const localAgents = JSON.parse(stored)
+        if (localAgents.length > 0 && localAgents[0].gatewayUrl) {
+          return {
+            url: localAgents[0].gatewayUrl,
+            token: localAgents[0].gatewayToken || undefined,
+          }
+        }
+      }
+    } catch {}
+    
+    return null
+  }
+
   useEffect(() => {
     async function fetchData() {
       // First, always load localStorage agents (works in SAAS/Workers mode)
@@ -380,29 +407,70 @@ function Dashboard() {
         refreshAgentStatuses(localAgents)
       }
       
-      // Check if we have a subdomain gateway with an API URL
-      const subdomainGateway = getSubdomainGateway()
-      const apiBase = subdomainGateway?.apiUrl || ''
+      // Check if we have a remote gateway to fetch from
+      const primaryGateway = getPrimaryGateway()
       
-      try {
-        // Try fetching from subdomain API first, then fall back to local
-        const fetchWithFallback = async (path: string) => {
-          if (apiBase) {
-            try {
-              const res = await fetch(`${apiBase}${path}`)
-              if (res.ok) return res
-            } catch {
-              console.log(`Failed to fetch from ${apiBase}${path}, trying local`)
-            }
+      if (primaryGateway) {
+        // SAAS mode: Fetch data from remote gateway via proxy
+        try {
+          console.log('Fetching from remote gateway:', primaryGateway.url)
+          const data = await fetchRemoteDashboardData(primaryGateway)
+          
+          setStats(data.stats)
+          setDailySummaries(data.dailySummaries)
+          setTasks(data.tasks)
+          setTaskStats(data.taskStats)
+          
+          // Generate basic insights from remote data
+          const remoteInsights: Insight[] = []
+          if (data.stats.totalCost > 1) {
+            remoteInsights.push({
+              id: 'cost-alert',
+              type: 'tip',
+              severity: 'info',
+              title: 'Cost tracking active',
+              description: `Total spend: $${data.stats.totalCost.toFixed(4)}`,
+            })
           }
-          return fetch(path)
+          setInsights(remoteInsights)
+          
+          // Calculate basic efficiency score
+          const taskCount = data.tasks.length
+          if (taskCount > 0) {
+            setEfficiencyScore({
+              overall: Math.min(100, Math.round(70 + (taskCount / 10))),
+              breakdown: Object.entries(data.taskStats)
+                .filter(([, s]) => s.count > 0)
+                .map(([cat, s]) => ({
+                  category: cat,
+                  score: Math.min(100, Math.round(60 + s.count * 5)),
+                  avgCost: s.totalCost / (s.count || 1),
+                  avgDuration: s.avgDuration,
+                  taskCount: s.count,
+                })),
+            })
+          }
+          
+          console.log('Remote data loaded:', { 
+            sessions: data.sessions.length,
+            tasks: data.tasks.length,
+            totalCost: data.stats.totalCost 
+          })
+        } catch (error) {
+          console.error('Failed to fetch from remote gateway:', error)
+        } finally {
+          setLoading(false)
         }
-        
+        return
+      }
+      
+      // Local mode: Fetch from local API endpoints
+      try {
         const [statsRes, tasksRes, insightsRes, agentsRes] = await Promise.all([
-          fetchWithFallback('/api/stats'),
-          fetchWithFallback(`/api/tasks?limit=200&category=${selectedCategory}`),
-          fetchWithFallback('/api/insights'),
-          fetchWithFallback('/api/agents')
+          fetch('/api/stats'),
+          fetch(`/api/tasks?limit=200&category=${selectedCategory}`),
+          fetch('/api/insights'),
+          fetch('/api/agents')
         ]);
 
         // Only process if responses are ok

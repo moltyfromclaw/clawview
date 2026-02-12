@@ -17,6 +17,7 @@ import { Route as ApiTasksRouteImport } from './routes/api/tasks'
 import { Route as ApiStatsRouteImport } from './routes/api/stats'
 import { Route as ApiSpawnRouteImport } from './routes/api/spawn'
 import { Route as ApiInsightsRouteImport } from './routes/api/insights'
+import { Route as ApiGatewayProxyRouteImport } from './routes/api/gateway-proxy'
 import { Route as ApiAgentsRouteImport } from './routes/api/agents'
 import { Route as ApiTasksTaskIdRouteImport } from './routes/api/tasks.$taskId'
 import { Route as ApiRealtimeSessionRouteImport } from './routes/api/realtime/session'
@@ -61,6 +62,11 @@ const ApiInsightsRoute = ApiInsightsRouteImport.update({
   path: '/api/insights',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGatewayProxyRoute = ApiGatewayProxyRouteImport.update({
+  id: '/api/gateway-proxy',
+  path: '/api/gateway-proxy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAgentsRoute = ApiAgentsRouteImport.update({
   id: '/api/agents',
   path: '/api/agents',
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/office': typeof OfficeRoute
   '/standup': typeof StandupRoute
   '/api/agents': typeof ApiAgentsRoute
+  '/api/gateway-proxy': typeof ApiGatewayProxyRoute
   '/api/insights': typeof ApiInsightsRoute
   '/api/spawn': typeof ApiSpawnRoute
   '/api/stats': typeof ApiStatsRoute
@@ -95,6 +102,7 @@ export interface FileRoutesByTo {
   '/office': typeof OfficeRoute
   '/standup': typeof StandupRoute
   '/api/agents': typeof ApiAgentsRoute
+  '/api/gateway-proxy': typeof ApiGatewayProxyRoute
   '/api/insights': typeof ApiInsightsRoute
   '/api/spawn': typeof ApiSpawnRoute
   '/api/stats': typeof ApiStatsRoute
@@ -109,6 +117,7 @@ export interface FileRoutesById {
   '/office': typeof OfficeRoute
   '/standup': typeof StandupRoute
   '/api/agents': typeof ApiAgentsRoute
+  '/api/gateway-proxy': typeof ApiGatewayProxyRoute
   '/api/insights': typeof ApiInsightsRoute
   '/api/spawn': typeof ApiSpawnRoute
   '/api/stats': typeof ApiStatsRoute
@@ -124,6 +133,7 @@ export interface FileRouteTypes {
     | '/office'
     | '/standup'
     | '/api/agents'
+    | '/api/gateway-proxy'
     | '/api/insights'
     | '/api/spawn'
     | '/api/stats'
@@ -137,6 +147,7 @@ export interface FileRouteTypes {
     | '/office'
     | '/standup'
     | '/api/agents'
+    | '/api/gateway-proxy'
     | '/api/insights'
     | '/api/spawn'
     | '/api/stats'
@@ -150,6 +161,7 @@ export interface FileRouteTypes {
     | '/office'
     | '/standup'
     | '/api/agents'
+    | '/api/gateway-proxy'
     | '/api/insights'
     | '/api/spawn'
     | '/api/stats'
@@ -164,6 +176,7 @@ export interface RootRouteChildren {
   OfficeRoute: typeof OfficeRoute
   StandupRoute: typeof StandupRoute
   ApiAgentsRoute: typeof ApiAgentsRoute
+  ApiGatewayProxyRoute: typeof ApiGatewayProxyRoute
   ApiInsightsRoute: typeof ApiInsightsRoute
   ApiSpawnRoute: typeof ApiSpawnRoute
   ApiStatsRoute: typeof ApiStatsRoute
@@ -230,6 +243,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiInsightsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/gateway-proxy': {
+      id: '/api/gateway-proxy'
+      path: '/api/gateway-proxy'
+      fullPath: '/api/gateway-proxy'
+      preLoaderRoute: typeof ApiGatewayProxyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/agents': {
       id: '/api/agents'
       path: '/api/agents'
@@ -271,6 +291,7 @@ const rootRouteChildren: RootRouteChildren = {
   OfficeRoute: OfficeRoute,
   StandupRoute: StandupRoute,
   ApiAgentsRoute: ApiAgentsRoute,
+  ApiGatewayProxyRoute: ApiGatewayProxyRoute,
   ApiInsightsRoute: ApiInsightsRoute,
   ApiSpawnRoute: ApiSpawnRoute,
   ApiStatsRoute: ApiStatsRoute,
