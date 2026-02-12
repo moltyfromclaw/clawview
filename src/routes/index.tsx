@@ -1105,9 +1105,39 @@ function Dashboard() {
                             </div>
                             <p className="text-sm text-gray-400 mt-0.5">{agent.role || 'OpenClaw Gateway'}</p>
                           </div>
-                          <div className="text-right shrink-0">
-                            <div className="text-sm text-gray-400">{agent.taskCount} tasks</div>
-                            <div className="text-green-400 text-sm">{formatCost(agent.totalCost)}</div>
+                          <div className="text-right shrink-0 flex items-center gap-3">
+                            <div>
+                              <div className="text-sm text-gray-400">{agent.taskCount} tasks</div>
+                              <div className="text-green-400 text-sm">{formatCost(agent.totalCost)}</div>
+                            </div>
+                            {agent.id !== 'local' && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  if (confirm(`Remove ${agent.name}?`)) {
+                                    // Remove from localStorage
+                                    try {
+                                      const stored = localStorage.getItem('clawview-agents')
+                                      if (stored) {
+                                        const agents = JSON.parse(stored)
+                                        const filtered = agents.filter((a: any) => a.id !== agent.id)
+                                        localStorage.setItem('clawview-agents', JSON.stringify(filtered))
+                                        // Reload to refresh
+                                        window.location.reload()
+                                      }
+                                    } catch (err) {
+                                      console.error('Failed to remove agent:', err)
+                                    }
+                                  }
+                                }}
+                                className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                                title="Remove agent"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
