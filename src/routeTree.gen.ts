@@ -10,11 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as StandupRouteImport } from './routes/standup'
+import { Route as SetupRouteImport } from './routes/setup'
 import { Route as OfficeRouteImport } from './routes/office'
 import { Route as DebugRouteImport } from './routes/debug'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TasksTaskIdRouteImport } from './routes/tasks.$taskId'
 import { Route as ApiTasksRouteImport } from './routes/api/tasks'
+import { Route as ApiStatsProxyRouteImport } from './routes/api/stats-proxy'
 import { Route as ApiStatsRouteImport } from './routes/api/stats'
 import { Route as ApiSpawnRouteImport } from './routes/api/spawn'
 import { Route as ApiInsightsRouteImport } from './routes/api/insights'
@@ -26,6 +28,11 @@ import { Route as ApiRealtimeSessionRouteImport } from './routes/api/realtime/se
 const StandupRoute = StandupRouteImport.update({
   id: '/standup',
   path: '/standup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OfficeRoute = OfficeRouteImport.update({
@@ -51,6 +58,11 @@ const TasksTaskIdRoute = TasksTaskIdRouteImport.update({
 const ApiTasksRoute = ApiTasksRouteImport.update({
   id: '/api/tasks',
   path: '/api/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStatsProxyRoute = ApiStatsProxyRouteImport.update({
+  id: '/api/stats-proxy',
+  path: '/api/stats-proxy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiStatsRoute = ApiStatsRouteImport.update({
@@ -93,12 +105,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/debug': typeof DebugRoute
   '/office': typeof OfficeRoute
+  '/setup': typeof SetupRoute
   '/standup': typeof StandupRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/gateway-proxy': typeof ApiGatewayProxyRoute
   '/api/insights': typeof ApiInsightsRoute
   '/api/spawn': typeof ApiSpawnRoute
   '/api/stats': typeof ApiStatsRoute
+  '/api/stats-proxy': typeof ApiStatsProxyRoute
   '/api/tasks': typeof ApiTasksRouteWithChildren
   '/tasks/$taskId': typeof TasksTaskIdRoute
   '/api/realtime/session': typeof ApiRealtimeSessionRoute
@@ -108,12 +122,14 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/debug': typeof DebugRoute
   '/office': typeof OfficeRoute
+  '/setup': typeof SetupRoute
   '/standup': typeof StandupRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/gateway-proxy': typeof ApiGatewayProxyRoute
   '/api/insights': typeof ApiInsightsRoute
   '/api/spawn': typeof ApiSpawnRoute
   '/api/stats': typeof ApiStatsRoute
+  '/api/stats-proxy': typeof ApiStatsProxyRoute
   '/api/tasks': typeof ApiTasksRouteWithChildren
   '/tasks/$taskId': typeof TasksTaskIdRoute
   '/api/realtime/session': typeof ApiRealtimeSessionRoute
@@ -124,12 +140,14 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/debug': typeof DebugRoute
   '/office': typeof OfficeRoute
+  '/setup': typeof SetupRoute
   '/standup': typeof StandupRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/gateway-proxy': typeof ApiGatewayProxyRoute
   '/api/insights': typeof ApiInsightsRoute
   '/api/spawn': typeof ApiSpawnRoute
   '/api/stats': typeof ApiStatsRoute
+  '/api/stats-proxy': typeof ApiStatsProxyRoute
   '/api/tasks': typeof ApiTasksRouteWithChildren
   '/tasks/$taskId': typeof TasksTaskIdRoute
   '/api/realtime/session': typeof ApiRealtimeSessionRoute
@@ -141,12 +159,14 @@ export interface FileRouteTypes {
     | '/'
     | '/debug'
     | '/office'
+    | '/setup'
     | '/standup'
     | '/api/agents'
     | '/api/gateway-proxy'
     | '/api/insights'
     | '/api/spawn'
     | '/api/stats'
+    | '/api/stats-proxy'
     | '/api/tasks'
     | '/tasks/$taskId'
     | '/api/realtime/session'
@@ -156,12 +176,14 @@ export interface FileRouteTypes {
     | '/'
     | '/debug'
     | '/office'
+    | '/setup'
     | '/standup'
     | '/api/agents'
     | '/api/gateway-proxy'
     | '/api/insights'
     | '/api/spawn'
     | '/api/stats'
+    | '/api/stats-proxy'
     | '/api/tasks'
     | '/tasks/$taskId'
     | '/api/realtime/session'
@@ -171,12 +193,14 @@ export interface FileRouteTypes {
     | '/'
     | '/debug'
     | '/office'
+    | '/setup'
     | '/standup'
     | '/api/agents'
     | '/api/gateway-proxy'
     | '/api/insights'
     | '/api/spawn'
     | '/api/stats'
+    | '/api/stats-proxy'
     | '/api/tasks'
     | '/tasks/$taskId'
     | '/api/realtime/session'
@@ -187,12 +211,14 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DebugRoute: typeof DebugRoute
   OfficeRoute: typeof OfficeRoute
+  SetupRoute: typeof SetupRoute
   StandupRoute: typeof StandupRoute
   ApiAgentsRoute: typeof ApiAgentsRoute
   ApiGatewayProxyRoute: typeof ApiGatewayProxyRoute
   ApiInsightsRoute: typeof ApiInsightsRoute
   ApiSpawnRoute: typeof ApiSpawnRoute
   ApiStatsRoute: typeof ApiStatsRoute
+  ApiStatsProxyRoute: typeof ApiStatsProxyRoute
   ApiTasksRoute: typeof ApiTasksRouteWithChildren
   TasksTaskIdRoute: typeof TasksTaskIdRoute
   ApiRealtimeSessionRoute: typeof ApiRealtimeSessionRoute
@@ -205,6 +231,13 @@ declare module '@tanstack/react-router' {
       path: '/standup'
       fullPath: '/standup'
       preLoaderRoute: typeof StandupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/office': {
@@ -240,6 +273,13 @@ declare module '@tanstack/react-router' {
       path: '/api/tasks'
       fullPath: '/api/tasks'
       preLoaderRoute: typeof ApiTasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/stats-proxy': {
+      id: '/api/stats-proxy'
+      path: '/api/stats-proxy'
+      fullPath: '/api/stats-proxy'
+      preLoaderRoute: typeof ApiStatsProxyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/stats': {
@@ -310,12 +350,14 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DebugRoute: DebugRoute,
   OfficeRoute: OfficeRoute,
+  SetupRoute: SetupRoute,
   StandupRoute: StandupRoute,
   ApiAgentsRoute: ApiAgentsRoute,
   ApiGatewayProxyRoute: ApiGatewayProxyRoute,
   ApiInsightsRoute: ApiInsightsRoute,
   ApiSpawnRoute: ApiSpawnRoute,
   ApiStatsRoute: ApiStatsRoute,
+  ApiStatsProxyRoute: ApiStatsProxyRoute,
   ApiTasksRoute: ApiTasksRouteWithChildren,
   TasksTaskIdRoute: TasksTaskIdRoute,
   ApiRealtimeSessionRoute: ApiRealtimeSessionRoute,

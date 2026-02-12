@@ -24,18 +24,18 @@ export function LandingPage() {
         </p>
 
         <div className="flex gap-4 justify-center mb-16">
-          <button
-            onClick={() => setShowAddAgent(true)}
+          <Link
+            to="/setup"
             className="px-8 py-4 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-semibold transition text-lg"
           >
             Connect Your Agent
-          </button>
-          <a
-            href="https://github.com/moltyfromclaw/clawview"
+          </Link>
+          <button
+            onClick={() => setShowAddAgent(true)}
             className="px-8 py-4 border border-emerald-500 hover:bg-emerald-500/20 rounded-xl font-semibold transition text-lg"
           >
-            View on GitHub
-          </a>
+            Quick Connect (Advanced)
+          </button>
         </div>
 
         {/* Preview mockup */}
