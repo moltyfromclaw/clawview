@@ -5,6 +5,11 @@ import { SpawnAgentModal } from '../components/SpawnAgentModal'
 import { LandingPage } from '../components/LandingPage'
 import { fetchRemoteDashboardData, type GatewayConfig } from '../lib/remote-gateway'
 
+// Extended config for stats endpoint
+interface AgentConfig extends GatewayConfig {
+  useStatsEndpoint?: boolean
+}
+
 // Check if running in SAAS mode (set via env var or query param for testing)
 const isSaasMode = () => {
   if (typeof window !== 'undefined') {
@@ -206,6 +211,22 @@ const insightConfig: Record<string, { icon: string; bgColor: string; borderColor
   tip: { icon: '💭', bgColor: 'bg-blue-500/10', borderColor: 'border-blue-500/30' }
 };
 
+// Helper to categorize sessions based on tools used
+function categorizeSession(session: { tools?: Record<string, number> }): string {
+  const tools = Object.keys(session.tools || {}).map(t => t.toLowerCase())
+  
+  if (tools.some(t => t === 'message')) return 'communication'
+  if (tools.some(t => t === 'web_search' || t === 'web_fetch')) return 'research'
+  if (tools.some(t => t === 'browser')) return 'browser'
+  if (tools.some(t => t === 'cron')) return 'scheduling'
+  if (tools.some(t => t === 'gateway')) return 'system'
+  if (tools.some(t => t === 'write' || t === 'edit')) return 'coding'
+  if (tools.some(t => t === 'read')) return 'file_management'
+  if (tools.some(t => t === 'exec')) return 'monitoring'
+  
+  return 'other'
+}
+
 function getToolIcon(toolName: string): string {
   const icons: Record<string, string> = {
     exec: '⚡', browser: '🌐', Read: '📖', Write: '✍️', Edit: '✏️',
@@ -380,7 +401,7 @@ function Dashboard() {
 
   // Get the primary gateway to fetch data from (subdomain or first localStorage agent)
   // Only used in SAAS/remote mode, NOT on localhost
-  const getPrimaryGateway = (): GatewayConfig | null => {
+  const getPrimaryGateway = (): AgentConfig | null => {
     // On localhost, always use local APIs (don't use remote gateway)
     if (isLocalhost()) {
       console.log('[ClawView] Running on localhost - using local APIs')
@@ -402,10 +423,12 @@ function Dashboard() {
         const localAgents = JSON.parse(stored)
         console.log('[ClawView] Parsed agents:', localAgents)
         if (localAgents.length > 0 && localAgents[0].gatewayUrl) {
-          console.log('[ClawView] Using localStorage gateway:', localAgents[0].gatewayUrl)
+          const agent = localAgents[0]
+          console.log('[ClawView] Using localStorage gateway:', agent.gatewayUrl, 'useStatsEndpoint:', agent.useStatsEndpoint)
           return {
-            url: localAgents[0].gatewayUrl,
-            token: localAgents[0].gatewayToken || undefined,
+            url: agent.gatewayUrl,
+            token: agent.gatewayToken || undefined,
+            useStatsEndpoint: agent.useStatsEndpoint || false,
           }
         }
       }
@@ -434,10 +457,80 @@ function Dashboard() {
       console.log('[ClawView] primaryGateway:', primaryGateway)
       
       if (primaryGateway) {
-        // SAAS mode: Fetch data from remote gateway via proxy
+        // SAAS mode: Fetch data from remote source
         try {
-          console.log('[ClawView] Fetching from remote gateway:', primaryGateway.url, 'token:', primaryGateway.token ? '***' + primaryGateway.token.slice(-4) : 'none')
-          const data = await fetchRemoteDashboardData(primaryGateway)
+          console.log('[ClawView] Fetching from remote:', primaryGateway.url, 'useStatsEndpoint:', primaryGateway.useStatsEndpoint, 'token:', primaryGateway.token ? '***' + primaryGateway.token.slice(-4) : 'none')
+          
+          let data;
+          
+          if (primaryGateway.useStatsEndpoint) {
+            // Use stats endpoint directly (created by setup prompt)
+            console.log('[ClawView] Using stats endpoint directly')
+            const statsRes = await fetch('/api/stats-proxy', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: primaryGateway.url, token: primaryGateway.token, path: '/stats' })
+            })
+            
+            if (!statsRes.ok) {
+              throw new Error(`Stats proxy failed: ${statsRes.status}`)
+            }
+            
+            const statsData = await statsRes.json()
+            console.log('[ClawView] Stats endpoint response:', statsData)
+            
+            // Convert stats endpoint format to dashboard format
+            data = {
+              stats: statsData.stats || { totalCost: 0, sessionCount: 0, totalMessages: 0, toolCalls: {}, models: {} },
+              dailySummaries: statsData.dailySummaries || [],
+              sessions: statsData.sessions || [],
+              tasks: [], // Stats endpoint doesn't provide tasks, generate from sessions
+              taskStats: {
+                communication: { count: 0, totalCost: 0, avgDuration: 0 },
+                research: { count: 0, totalCost: 0, avgDuration: 0 },
+                coding: { count: 0, totalCost: 0, avgDuration: 0 },
+                file_management: { count: 0, totalCost: 0, avgDuration: 0 },
+                monitoring: { count: 0, totalCost: 0, avgDuration: 0 },
+                scheduling: { count: 0, totalCost: 0, avgDuration: 0 },
+                browser: { count: 0, totalCost: 0, avgDuration: 0 },
+                system: { count: 0, totalCost: 0, avgDuration: 0 },
+                other: { count: 0, totalCost: 0, avgDuration: 0 },
+              },
+            }
+            
+            // Generate tasks from sessions
+            for (const session of (statsData.sessions || [])) {
+              const category = categorizeSession(session)
+              data.tasks.push({
+                id: session.id,
+                sessionId: session.sessionId || session.id,
+                startTime: session.firstTimestamp || new Date().toISOString(),
+                endTime: session.lastTimestamp || new Date().toISOString(),
+                durationMs: session.lastTimestamp && session.firstTimestamp 
+                  ? new Date(session.lastTimestamp).getTime() - new Date(session.firstTimestamp).getTime() 
+                  : 0,
+                summary: `Session: ${session.messageCount || 0} messages`,
+                category,
+                tags: Object.keys(session.tools || {}).slice(0, 3),
+                activityCount: session.messageCount || 0,
+                toolsUsed: Object.keys(session.tools || {}),
+                cost: session.cost || 0,
+                inputTokens: session.inputTokens || 0,
+                outputTokens: session.outputTokens || 0,
+                triggerType: 'unknown',
+              })
+              
+              // Update task stats
+              if (data.taskStats[category]) {
+                data.taskStats[category].count++
+                data.taskStats[category].totalCost += session.cost || 0
+              }
+            }
+          } else {
+            // Use gateway proxy (sessions_list tool)
+            data = await fetchRemoteDashboardData(primaryGateway)
+          }
+          
           console.log('[ClawView] Received data:', { sessions: data.sessions?.length, tasks: data.tasks?.length, stats: data.stats })
           
           setStats(data.stats)
