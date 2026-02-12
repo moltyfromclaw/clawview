@@ -234,6 +234,10 @@ function Dashboard() {
 
   useEffect(() => {
     async function fetchData() {
+      // First, always load localStorage agents (works in SAAS/Workers mode)
+      const localAgents = loadAgentsWithLocalStorage([])
+      setAgents(localAgents)
+      
       try {
         const [statsRes, tasksRes, insightsRes, agentsRes] = await Promise.all([
           fetch('/api/stats'),
@@ -242,20 +246,24 @@ function Dashboard() {
           fetch('/api/agents')
         ]);
 
-        const statsData = await statsRes.json();
-        const tasksData = await tasksRes.json();
-        const insightsData = await insightsRes.json();
-        const agentsData = await agentsRes.json();
+        // Only process if responses are ok (will fail in Workers/SAAS mode)
+        if (statsRes.ok && tasksRes.ok && insightsRes.ok && agentsRes.ok) {
+          const statsData = await statsRes.json();
+          const tasksData = await tasksRes.json();
+          const insightsData = await insightsRes.json();
+          const agentsData = await agentsRes.json();
 
-        setStats(statsData.stats);
-        setDailySummaries(statsData.dailySummaries || []);
-        setTasks(tasksData.tasks || []);
-        setTaskStats(tasksData.stats || null);
-        setInsights(insightsData.insights || []);
-        setEfficiencyScore(insightsData.efficiencyScore || null);
-        setAgents(loadAgentsWithLocalStorage(agentsData.agents || []));
+          setStats(statsData.stats);
+          setDailySummaries(statsData.dailySummaries || []);
+          setTasks(tasksData.tasks || []);
+          setTaskStats(tasksData.stats || null);
+          setInsights(insightsData.insights || []);
+          setEfficiencyScore(insightsData.efficiencyScore || null);
+          setAgents(loadAgentsWithLocalStorage(agentsData.agents || []));
+        }
       } catch (error) {
-        console.error('Error fetching data:', error);
+        // In SAAS mode, API calls will fail - that's ok, we have localStorage agents
+        console.log('API fetch failed (expected in SAAS mode):', error);
       } finally {
         setLoading(false);
       }
