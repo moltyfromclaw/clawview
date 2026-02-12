@@ -1,10 +1,6 @@
-import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { AddAgentModal } from './AddAgentModal'
 
 export function LandingPage() {
-  const [showAddAgent, setShowAddAgent] = useState(false)
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-emerald-950 to-gray-900 text-white">
       {/* Hero */}
@@ -30,12 +26,12 @@ export function LandingPage() {
           >
             Connect Your Agent
           </Link>
-          <button
-            onClick={() => setShowAddAgent(true)}
+          <Link
+            to="/setup"
             className="px-8 py-4 border border-emerald-500 hover:bg-emerald-500/20 rounded-xl font-semibold transition text-lg"
           >
             Quick Connect (Advanced)
-          </button>
+          </Link>
         </div>
 
         {/* Preview mockup */}
@@ -143,15 +139,6 @@ export function LandingPage() {
           </p>
         </div>
       </footer>
-
-      <AddAgentModal
-        open={showAddAgent}
-        onOpenChange={setShowAddAgent}
-        onAgentAdded={() => {
-          // Redirect to dashboard after adding agent (use ?saas=false to show dashboard)
-          window.location.href = '/?saas=false'
-        }}
-      />
     </div>
   )
 }

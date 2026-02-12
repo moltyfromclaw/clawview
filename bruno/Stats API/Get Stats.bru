@@ -1,0 +1,20 @@
+meta {
+  name: Get Stats
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/stats
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+vars:pre-request {
+  token: 
+  baseUrl: http://100.115.232.19:18790
+}

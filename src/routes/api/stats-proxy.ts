@@ -24,9 +24,9 @@ export const Route = createFileRoute('/api/stats-proxy')({
           const { url, token, path = '/stats' } = body
 
           if (!url) {
-            return new Response(JSON.stringify({ 
-              ok: false, 
-              error: 'URL is required' 
+            return new Response(JSON.stringify({
+              ok: false,
+              error: 'URL is required',
             }), {
               status: 400,
               headers: corsHeaders,
@@ -40,7 +40,7 @@ export const Route = createFileRoute('/api/stats-proxy')({
           }
 
           const fetchUrl = `${baseUrl}${path}`
-          
+
           const headers: Record<string, string> = {
             'Content-Type': 'application/json',
           }
@@ -55,9 +55,14 @@ export const Route = createFileRoute('/api/stats-proxy')({
 
           if (!response.ok) {
             const errorText = await response.text()
+            let errorMessage = `Stats server returned ${response.status}: ${errorText}`
+            if (response.status === 403) {
+              errorMessage =
+                'Stats server returned 403. The gateway may only allow requests from your local network (the proxy runs on our server), or the token may be invalid. Try opening ClawView from the same network as the gateway, or ensure the stats server allows requests from Cloudflare.'
+            }
             return new Response(JSON.stringify({
               ok: false,
-              error: `Stats server returned ${response.status}: ${errorText}`,
+              error: errorMessage,
               status: response.status,
             }), {
               status: response.status,

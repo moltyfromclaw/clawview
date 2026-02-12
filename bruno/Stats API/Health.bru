@@ -1,0 +1,13 @@
+meta {
+  name: Health Check
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/health
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

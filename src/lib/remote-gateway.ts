@@ -405,7 +405,7 @@ function extractTags(tools: string[], channel?: string): string[] {
  * Fetch all dashboard data from a remote gateway
  */
 export async function fetchRemoteDashboardData(gateway: GatewayConfig) {
-  const sessions = await fetchRemoteSessions(gateway, { limit: 100, messageLimit: 10 })
+  const sessions = await fetchRemoteSessions(gateway, { limit: 100, messageLimit: 50 })
 
   const stats = calculateStatsFromSessions(sessions)
   const dailySummaries = calculateDailySummariesFromSessions(sessions)
