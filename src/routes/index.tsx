@@ -32,12 +32,13 @@ const getSubdomainGateway = (): { name: string; url: string; token?: string } | 
   
   const subdomain = match[1]
   
-  // Known agent gateways
-  const gateways: Record<string, { name: string; url: string; token?: string }> = {
+  // Known agent gateways with their ClawView API URLs
+  const gateways: Record<string, { name: string; url: string; token?: string; apiUrl?: string }> = {
     'molty': {
       name: 'Molty',
       url: 'https://ms-mac-mini.tail901772.ts.net',
-      token: 'e78df07ea225de5e17a2aed41ab2a07c8b3ac3f9ce56dadd'
+      token: 'e78df07ea225de5e17a2aed41ab2a07c8b3ac3f9ce56dadd',
+      apiUrl: 'http://100.115.232.19:3201' // Local ClawView API (Tailscale)
     }
   }
   
@@ -379,15 +380,32 @@ function Dashboard() {
         refreshAgentStatuses(localAgents)
       }
       
+      // Check if we have a subdomain gateway with an API URL
+      const subdomainGateway = getSubdomainGateway()
+      const apiBase = subdomainGateway?.apiUrl || ''
+      
       try {
+        // Try fetching from subdomain API first, then fall back to local
+        const fetchWithFallback = async (path: string) => {
+          if (apiBase) {
+            try {
+              const res = await fetch(`${apiBase}${path}`)
+              if (res.ok) return res
+            } catch {
+              console.log(`Failed to fetch from ${apiBase}${path}, trying local`)
+            }
+          }
+          return fetch(path)
+        }
+        
         const [statsRes, tasksRes, insightsRes, agentsRes] = await Promise.all([
-          fetch('/api/stats'),
-          fetch(`/api/tasks?limit=200&category=${selectedCategory}`),
-          fetch('/api/insights'),
-          fetch('/api/agents')
+          fetchWithFallback('/api/stats'),
+          fetchWithFallback(`/api/tasks?limit=200&category=${selectedCategory}`),
+          fetchWithFallback('/api/insights'),
+          fetchWithFallback('/api/agents')
         ]);
 
-        // Only process if responses are ok (will fail in Workers/SAAS mode)
+        // Only process if responses are ok
         if (statsRes.ok && tasksRes.ok && insightsRes.ok && agentsRes.ok) {
           const statsData = await statsRes.json();
           const tasksData = await tasksRes.json();

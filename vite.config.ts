@@ -9,6 +9,7 @@ import { fileURLToPath, URL } from 'url'
 const config = defineConfig({
   server: {
     allowedHosts: ['ms-mac-mini.tail901772.ts.net', 'molty.viewholly.com', 'localhost'],
+    cors: true, // Enable CORS for cross-origin requests
   },
   resolve: {
     alias: {
