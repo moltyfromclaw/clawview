@@ -11,9 +11,37 @@ const isSaasMode = () => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('saas') === 'true') return true
     if (params.get('saas') === 'false') return false
+    
+    // Subdomains like molty.viewholly.com go straight to dashboard
+    const hostname = window.location.hostname
+    if (hostname.includes('.viewholly.com') && !hostname.startsWith('www.')) {
+      return false // Not SAAS mode - show dashboard
+    }
   }
   // Check env var (set at build time or via Cloudflare)
   return import.meta.env.VITE_SAAS_MODE === 'true' || import.meta.env.SAAS_MODE === 'true'
+}
+
+// Get gateway URL for subdomain (e.g., molty.viewholly.com -> Molty's gateway)
+const getSubdomainGateway = (): { name: string; url: string; token?: string } | null => {
+  if (typeof window === 'undefined') return null
+  
+  const hostname = window.location.hostname
+  const match = hostname.match(/^([^.]+)\.viewholly\.com$/)
+  if (!match) return null
+  
+  const subdomain = match[1]
+  
+  // Known agent gateways
+  const gateways: Record<string, { name: string; url: string; token?: string }> = {
+    'molty': {
+      name: 'Molty',
+      url: 'https://ms-mac-mini.tail901772.ts.net',
+      token: 'e78df07ea225de5e17a2aed41ab2a07c8b3ac3f9ce56dadd'
+    }
+  }
+  
+  return gateways[subdomain] || null
 }
 
 export const Route = createFileRoute('/')({
@@ -204,29 +232,55 @@ function Dashboard() {
   const [showAddAgentModal, setShowAddAgentModal] = useState(false);
   const [showSpawnModal, setShowSpawnModal] = useState(false);
 
-  // Load agents from localStorage and merge with API
+  // Load agents from localStorage, subdomain gateway, and merge with API
   const loadAgentsWithLocalStorage = (apiAgents: Agent[]) => {
     try {
+      const agents: Agent[] = [...apiAgents]
+      
+      // Add subdomain gateway if present (e.g., molty.viewholly.com)
+      const subdomainGateway = getSubdomainGateway()
+      if (subdomainGateway) {
+        const exists = agents.some(a => a.gatewayUrl === subdomainGateway.url)
+        if (!exists) {
+          agents.push({
+            id: `subdomain-${subdomainGateway.name.toLowerCase()}`,
+            name: subdomainGateway.name,
+            role: 'OpenClaw Agent',
+            team: 'Remote',
+            avatar: '🦞',
+            gatewayUrl: subdomainGateway.url,
+            gatewayToken: subdomainGateway.token || null,
+            status: 'idle' as const,
+            gatewayStatus: 'offline' as const,
+            totalCost: 0,
+            taskCount: 0,
+            activeSessions: 0,
+          })
+        }
+      }
+      
+      // Add localStorage agents
       const stored = localStorage.getItem('clawview-agents')
-      if (!stored) return apiAgents
+      if (stored) {
+        const localAgents = JSON.parse(stored)
+        const remoteAgents: Agent[] = localAgents.map((a: any) => ({
+          id: a.id,
+          name: a.name,
+          role: a.role || 'Agent',
+          team: a.team || 'Remote',
+          avatar: a.icon || '🤖',
+          gatewayUrl: a.gatewayUrl,
+          gatewayToken: a.gatewayToken,
+          status: 'idle' as const,
+          gatewayStatus: 'offline' as const,
+          totalCost: 0,
+          taskCount: 0,
+          activeSessions: 0,
+        }))
+        agents.push(...remoteAgents)
+      }
       
-      const localAgents = JSON.parse(stored)
-      const remoteAgents: Agent[] = localAgents.map((a: any) => ({
-        id: a.id,
-        name: a.name,
-        role: a.role || 'Agent',
-        team: a.team || 'Remote',
-        avatar: a.icon || '🤖',
-        gatewayUrl: a.gatewayUrl,
-        gatewayToken: a.gatewayToken,
-        status: 'idle' as const,
-        gatewayStatus: 'offline' as const,
-        totalCost: 0,
-        taskCount: 0,
-        activeSessions: 0,
-      }))
-      
-      return [...apiAgents, ...remoteAgents]
+      return agents
     } catch {
       return apiAgents
     }
