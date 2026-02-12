@@ -91,11 +91,11 @@ export function AddAgentModal({ open, onOpenChange, onAgentAdded }: AddAgentModa
 
       ws.onopen = () => {
         clearTimeout(timeoutId)
-        // Send a simple RPC request to verify connection
+        // Send a request in OpenClaw's frame format
         ws.send(JSON.stringify({ 
-          jsonrpc: '2.0', 
-          id: 1, 
-          method: 'gateway.status', 
+          type: 'req', 
+          id: 'verify-1', 
+          method: 'status', 
           params: {} 
         }))
       }
