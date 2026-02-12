@@ -77,6 +77,26 @@ export function AddAgentModal({ open, onOpenChange, onAgentAdded }: AddAgentModa
     onOpenChange(open)
   }
 
+  const saveAgent = async () => {
+    try {
+      const response = await fetch('/api/agents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          role: formData.role,
+          team: formData.team,
+          icon: formData.icon,
+          gatewayUrl: formData.gatewayUrl,
+          gatewayToken: formData.gatewayToken || null,
+        }),
+      })
+      return response.ok
+    } catch {
+      return false
+    }
+  }
+
   const handleVerifyConnection = async () => {
     setVerifying(true)
     setVerifyError(null)
@@ -133,32 +153,33 @@ export function AddAgentModal({ open, onOpenChange, onAgentAdded }: AddAgentModa
         clearTimeout(timeoutId)
         try {
           const data = JSON.parse(event.data)
-          // Check for successful connect response (type: "res", ok: true)
-          if (data.type === 'res' && data.ok === true) {
+          const handleSuccess = async () => {
             setVerifySuccess(true)
             ws.close()
-            setTimeout(() => {
-              onAgentAdded?.()
-              handleOpenChange(false)
-            }, 1500)
+            // Save the agent to storage
+            const saved = await saveAgent()
+            if (saved) {
+              setTimeout(() => {
+                onAgentAdded?.()
+                handleOpenChange(false)
+              }, 1000)
+            } else {
+              setVerifyError('Connected but failed to save agent')
+              setVerifySuccess(false)
+            }
+          }
+          
+          // Check for successful connect response (type: "res", ok: true)
+          if (data.type === 'res' && data.ok === true) {
+            handleSuccess()
           } else if (data.type === 'res' && data.ok === false) {
             setVerifyError(data.payload?.message || data.payload?.error || 'Connection rejected by gateway')
           } else if (data.type === 'evt' && data.event === 'connect.challenge') {
             // Gateway requires device auth challenge - for now just note it works
-            setVerifySuccess(true)
-            ws.close()
-            setTimeout(() => {
-              onAgentAdded?.()
-              handleOpenChange(false)
-            }, 1500)
+            handleSuccess()
           } else {
             // Any other valid response means gateway is reachable
-            setVerifySuccess(true)
-            ws.close()
-            setTimeout(() => {
-              onAgentAdded?.()
-              handleOpenChange(false)
-            }, 1500)
+            handleSuccess()
           }
         } catch {
           setVerifyError('Invalid response from gateway')

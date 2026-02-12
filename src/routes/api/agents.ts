@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { readFileSync, readdirSync, existsSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { homedir } from 'os'
 import { join } from 'path'
 
@@ -17,6 +17,35 @@ interface Agent {
   totalCost: number
   taskCount: number
   activeSessions: number
+}
+
+interface StoredAgent {
+  id: string
+  name: string
+  role: string
+  team: string
+  icon: string
+  gatewayUrl: string
+  gatewayToken: string | null
+  createdAt: number
+}
+
+// Storage for connected agents
+const AGENTS_STORAGE_PATH = join(homedir(), '.openclaw', 'clawview-agents.json')
+
+function loadStoredAgents(): StoredAgent[] {
+  try {
+    if (existsSync(AGENTS_STORAGE_PATH)) {
+      return JSON.parse(readFileSync(AGENTS_STORAGE_PATH, 'utf-8'))
+    }
+  } catch {}
+  return []
+}
+
+function saveStoredAgents(agents: StoredAgent[]): void {
+  const dir = join(homedir(), '.openclaw')
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+  writeFileSync(AGENTS_STORAGE_PATH, JSON.stringify(agents, null, 2))
 }
 
 interface SessionEntry {
@@ -117,7 +146,24 @@ export const Route = createFileRoute('/api/agents')({
           ).length,
         }
         
-        const agents = [localAgent]
+        // Load stored remote agents
+        const storedAgents = loadStoredAgents()
+        const remoteAgents: Agent[] = storedAgents.map(stored => ({
+          id: stored.id,
+          name: stored.name,
+          role: stored.role || 'Agent',
+          team: stored.team || 'Remote',
+          avatar: stored.icon || '🤖',
+          gatewayUrl: stored.gatewayUrl,
+          gatewayToken: stored.gatewayToken,
+          status: 'idle' as const, // Would need to ping to check
+          gatewayStatus: 'offline' as const, // Would need to ping to check
+          totalCost: 0,
+          taskCount: 0,
+          activeSessions: 0,
+        }))
+        
+        const agents = [localAgent, ...remoteAgents]
         
         return new Response(JSON.stringify({
           agents,
@@ -130,6 +176,44 @@ export const Route = createFileRoute('/api/agents')({
         }), {
           headers: { 'Content-Type': 'application/json' },
         })
+      },
+      
+      POST: async ({ request }) => {
+        try {
+          const body = await request.json()
+          const { name, role, team, icon, gatewayUrl, gatewayToken } = body
+          
+          if (!name || !gatewayUrl) {
+            return new Response(JSON.stringify({ error: 'Name and gateway URL required' }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' },
+            })
+          }
+          
+          const newAgent: StoredAgent = {
+            id: `agent-${Date.now()}`,
+            name,
+            role: role || '',
+            team: team || '',
+            icon: icon || '🤖',
+            gatewayUrl,
+            gatewayToken: gatewayToken || null,
+            createdAt: Date.now(),
+          }
+          
+          const agents = loadStoredAgents()
+          agents.push(newAgent)
+          saveStoredAgents(agents)
+          
+          return new Response(JSON.stringify({ success: true, agent: newAgent }), {
+            headers: { 'Content-Type': 'application/json' },
+          })
+        } catch (error) {
+          return new Response(JSON.stringify({ error: 'Failed to add agent' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
       },
     },
   },
