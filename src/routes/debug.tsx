@@ -12,6 +12,7 @@ function DebugPage() {
   const [args, setArgs] = useState('{"limit": 5, "messageLimit": 1}')
   const [results, setResults] = useState<Array<{ type: string; time: string; data: unknown }>>([])
   const [loading, setLoading] = useState(false)
+  const [connectionWorking, setConnectionWorking] = useState(false)
 
   const log = (type: string, data: unknown) => {
     setResults(prev => [...prev, { type, time: new Date().toISOString(), data }])
@@ -59,8 +60,52 @@ function DebugPage() {
       
       const data = await res.json()
       log('proxy-fetch', { status: res.status, ok: res.ok, data })
+      
+      // Check if connection worked
+      if (data.ok && data.result?.details?.sessions) {
+        setConnectionWorking(true)
+        log('success', `✅ Connection working! Found ${data.result.details.sessions.length} sessions`)
+      } else if (data.ok) {
+        setConnectionWorking(true)
+        log('success', '✅ Connection working!')
+      }
     } catch (error) {
       log('proxy-fetch-error', { error: error instanceof Error ? error.message : String(error) })
+    }
+  }
+
+  // Save gateway to localStorage so dashboard can use it
+  const saveGateway = () => {
+    try {
+      const stored = localStorage.getItem('clawview-agents')
+      const agents = stored ? JSON.parse(stored) : []
+      
+      // Check if already exists
+      const exists = agents.some((a: any) => a.gatewayUrl === gatewayUrl)
+      if (exists) {
+        // Update existing
+        const updated = agents.map((a: any) => 
+          a.gatewayUrl === gatewayUrl ? { ...a, gatewayToken: token } : a
+        )
+        localStorage.setItem('clawview-agents', JSON.stringify(updated))
+        log('success', '✅ Updated existing gateway in localStorage')
+      } else {
+        // Add new
+        agents.push({
+          id: `agent-${Date.now()}`,
+          name: new URL(gatewayUrl).hostname.split('.')[0] || 'Remote Agent',
+          role: 'OpenClaw Gateway',
+          team: 'Remote',
+          icon: '🦞',
+          gatewayUrl,
+          gatewayToken: token,
+          createdAt: Date.now(),
+        })
+        localStorage.setItem('clawview-agents', JSON.stringify(agents))
+        log('success', '✅ Saved gateway to localStorage! Go to dashboard to see data.')
+      }
+    } catch (error) {
+      log('error', { error: 'Failed to save to localStorage', details: String(error) })
     }
   }
 
@@ -211,7 +256,7 @@ function DebugPage() {
             </div>
           </div>
           
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <button
               onClick={runAllTests}
               disabled={loading}
@@ -239,7 +284,21 @@ function DebugPage() {
             >
               Clear
             </button>
+            {connectionWorking && (
+              <button
+                onClick={saveGateway}
+                className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded font-medium"
+              >
+                💾 Save & Use in Dashboard
+              </button>
+            )}
           </div>
+          
+          {connectionWorking && (
+            <div className="mt-2 p-2 bg-green-900/30 border border-green-700 rounded text-sm">
+              ✅ Connection verified! Click "Save & Use in Dashboard" to add this gateway, then go to the main dashboard.
+            </div>
+          )}
         </div>
         
         {/* Results */}
