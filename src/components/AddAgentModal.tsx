@@ -79,19 +79,24 @@ export function AddAgentModal({ open, onOpenChange, onAgentAdded }: AddAgentModa
 
   const saveAgent = async () => {
     try {
-      const response = await fetch('/api/agents', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          role: formData.role,
-          team: formData.team,
-          icon: formData.icon,
-          gatewayUrl: formData.gatewayUrl,
-          gatewayToken: formData.gatewayToken || null,
-        }),
-      })
-      return response.ok
+      // Save to localStorage (works in Workers/browser)
+      const stored = localStorage.getItem('clawview-agents')
+      const agents = stored ? JSON.parse(stored) : []
+      
+      const newAgent = {
+        id: `agent-${Date.now()}`,
+        name: formData.name,
+        role: formData.role,
+        team: formData.team,
+        icon: formData.icon,
+        gatewayUrl: formData.gatewayUrl,
+        gatewayToken: formData.gatewayToken || null,
+        createdAt: Date.now(),
+      }
+      
+      agents.push(newAgent)
+      localStorage.setItem('clawview-agents', JSON.stringify(agents))
+      return true
     } catch {
       return false
     }

@@ -148,8 +148,8 @@ export function LandingPage() {
         open={showAddAgent}
         onOpenChange={setShowAddAgent}
         onAgentAdded={() => {
-          // Redirect to dashboard after adding agent
-          window.location.href = '/dashboard'
+          // Redirect to dashboard after adding agent (use ?saas=false to show dashboard)
+          window.location.href = '/?saas=false'
         }}
       />
     </div>

@@ -204,6 +204,34 @@ function Dashboard() {
   const [showAddAgentModal, setShowAddAgentModal] = useState(false);
   const [showSpawnModal, setShowSpawnModal] = useState(false);
 
+  // Load agents from localStorage and merge with API
+  const loadAgentsWithLocalStorage = (apiAgents: Agent[]) => {
+    try {
+      const stored = localStorage.getItem('clawview-agents')
+      if (!stored) return apiAgents
+      
+      const localAgents = JSON.parse(stored)
+      const remoteAgents: Agent[] = localAgents.map((a: any) => ({
+        id: a.id,
+        name: a.name,
+        role: a.role || 'Agent',
+        team: a.team || 'Remote',
+        avatar: a.icon || '🤖',
+        gatewayUrl: a.gatewayUrl,
+        gatewayToken: a.gatewayToken,
+        status: 'idle' as const,
+        gatewayStatus: 'offline' as const,
+        totalCost: 0,
+        taskCount: 0,
+        activeSessions: 0,
+      }))
+      
+      return [...apiAgents, ...remoteAgents]
+    } catch {
+      return apiAgents
+    }
+  }
+
   useEffect(() => {
     async function fetchData() {
       try {
@@ -225,7 +253,7 @@ function Dashboard() {
         setTaskStats(tasksData.stats || null);
         setInsights(insightsData.insights || []);
         setEfficiencyScore(insightsData.efficiencyScore || null);
-        setAgents(agentsData.agents || []);
+        setAgents(loadAgentsWithLocalStorage(agentsData.agents || []));
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -771,7 +799,7 @@ function Dashboard() {
         onAgentAdded={() => {
           fetch('/api/agents')
             .then(res => res.json())
-            .then(data => setAgents(data.agents || []));
+            .then(data => setAgents(loadAgentsWithLocalStorage(data.agents || [])));
         }}
       />
 
@@ -783,7 +811,7 @@ function Dashboard() {
           console.log('Agent spawned:', sessionKey);
           fetch('/api/agents')
             .then(res => res.json())
-            .then(data => setAgents(data.agents || []));
+            .then(data => setAgents(loadAgentsWithLocalStorage(data.agents || [])));
         }}
       />
 
