@@ -2,10 +2,43 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { AddAgentModal } from '../components/AddAgentModal'
 import { SpawnAgentModal } from '../components/SpawnAgentModal'
+import { LandingPage } from '../components/LandingPage'
+
+// Check if running in SAAS mode (set via env var or query param for testing)
+const isSaasMode = () => {
+  if (typeof window !== 'undefined') {
+    // Check query param for testing
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('saas') === 'true') return true
+    if (params.get('saas') === 'false') return false
+  }
+  // Check env var (set at build time or via Cloudflare)
+  return import.meta.env.VITE_SAAS_MODE === 'true' || import.meta.env.SAAS_MODE === 'true'
+}
 
 export const Route = createFileRoute('/')({
-  component: Dashboard,
+  component: HomePage,
 })
+
+function HomePage() {
+  const [saasMode, setSaasMode] = useState(false)
+  const [checked, setChecked] = useState(false)
+  
+  useEffect(() => {
+    setSaasMode(isSaasMode())
+    setChecked(true)
+  }, [])
+  
+  if (!checked) {
+    return <div className="min-h-screen bg-gray-900" /> // Loading flash prevention
+  }
+  
+  if (saasMode) {
+    return <LandingPage />
+  }
+  
+  return <Dashboard />
+}
 
 interface Agent {
   id: string
