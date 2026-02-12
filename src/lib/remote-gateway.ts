@@ -106,6 +106,8 @@ async function invokeGatewayTool(
   tool: string,
   args: Record<string, unknown> = {}
 ): Promise<unknown> {
+  console.log('[RemoteGateway] Invoking tool:', tool, 'on', gateway.url)
+  
   const response = await fetch('/api/gateway-proxy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -117,18 +119,27 @@ async function invokeGatewayTool(
     }),
   })
 
+  console.log('[RemoteGateway] Response status:', response.status)
+
   if (!response.ok) {
+    const text = await response.text()
+    console.error('[RemoteGateway] Proxy request failed:', response.status, text)
     throw new Error(`Proxy request failed: ${response.status}`)
   }
 
   const result = await response.json()
+  console.log('[RemoteGateway] Result:', result.ok, result.error || 'success')
+  
   if (!result.ok) {
+    console.error('[RemoteGateway] Gateway error:', result.error)
     throw new Error(result.error || 'Gateway request failed')
   }
 
   // Gateway returns { result: { content: [...], details: {...} } }
   // The actual data is in details
-  return result.result?.details || result.result
+  const data = result.result?.details || result.result
+  console.log('[RemoteGateway] Extracted data keys:', Object.keys(data || {}))
+  return data
 }
 
 /**
@@ -140,7 +151,7 @@ export async function fetchRemoteSessions(
 ): Promise<RemoteSession[]> {
   const result = await invokeGatewayTool(gateway, 'sessions_list', {
     limit: options.limit || 100,
-    messageLimit: options.messageLimit || 5,
+    messageLimit: options.messageLimit || 50, // Get more messages for better cost data
   }) as { sessions: RemoteSession[] }
   
   return result.sessions || []

@@ -371,28 +371,49 @@ function Dashboard() {
     setAgents(updated)
   }
 
+  // Check if we're running locally (should use local APIs, not remote gateway)
+  const isLocalhost = (): boolean => {
+    if (typeof window === 'undefined') return false
+    const hostname = window.location.hostname
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.') || hostname.startsWith('100.')
+  }
+
   // Get the primary gateway to fetch data from (subdomain or first localStorage agent)
+  // Only used in SAAS/remote mode, NOT on localhost
   const getPrimaryGateway = (): GatewayConfig | null => {
+    // On localhost, always use local APIs (don't use remote gateway)
+    if (isLocalhost()) {
+      console.log('[ClawView] Running on localhost - using local APIs')
+      return null
+    }
+    
     // Check subdomain gateway first
     const subdomainGateway = getSubdomainGateway()
     if (subdomainGateway) {
+      console.log('[ClawView] Using subdomain gateway:', subdomainGateway.url)
       return { url: subdomainGateway.url, token: subdomainGateway.token }
     }
     
-    // Check localStorage agents
+    // Check localStorage agents (only for SAAS/Cloudflare mode)
     try {
       const stored = localStorage.getItem('clawview-agents')
+      console.log('[ClawView] localStorage clawview-agents:', stored)
       if (stored) {
         const localAgents = JSON.parse(stored)
+        console.log('[ClawView] Parsed agents:', localAgents)
         if (localAgents.length > 0 && localAgents[0].gatewayUrl) {
+          console.log('[ClawView] Using localStorage gateway:', localAgents[0].gatewayUrl)
           return {
             url: localAgents[0].gatewayUrl,
             token: localAgents[0].gatewayToken || undefined,
           }
         }
       }
-    } catch {}
+    } catch (e) {
+      console.error('[ClawView] Error reading localStorage:', e)
+    }
     
+    console.log('[ClawView] No gateway found')
     return null
   }
 
@@ -410,11 +431,14 @@ function Dashboard() {
       // Check if we have a remote gateway to fetch from
       const primaryGateway = getPrimaryGateway()
       
+      console.log('[ClawView] primaryGateway:', primaryGateway)
+      
       if (primaryGateway) {
         // SAAS mode: Fetch data from remote gateway via proxy
         try {
-          console.log('Fetching from remote gateway:', primaryGateway.url)
+          console.log('[ClawView] Fetching from remote gateway:', primaryGateway.url, 'token:', primaryGateway.token ? '***' + primaryGateway.token.slice(-4) : 'none')
           const data = await fetchRemoteDashboardData(primaryGateway)
+          console.log('[ClawView] Received data:', { sessions: data.sessions?.length, tasks: data.tasks?.length, stats: data.stats })
           
           setStats(data.stats)
           setDailySummaries(data.dailySummaries)
