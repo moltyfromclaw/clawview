@@ -60,12 +60,18 @@ export const Route = createFileRoute('/api/stats-proxy')({
               errorMessage =
                 'Stats server returned 403. The gateway may only allow requests from your local network (the proxy runs on our server), or the token may be invalid. Try opening ClawView from the same network as the gateway, or ensure the stats server allows requests from Cloudflare.'
             }
+            if (response.status === 401) {
+              errorMessage =
+                'Stats server returned 401. Check that your gateway stats token is correct and not expired.'
+            }
+            // Return 502 so the client sees "Bad Gateway" (upstream rejected), not 403 (which looks like our API forbidding the request)
+            const proxyStatus = response.status === 403 || response.status === 401 ? 502 : response.status
             return new Response(JSON.stringify({
               ok: false,
               error: errorMessage,
               status: response.status,
             }), {
-              status: response.status,
+              status: proxyStatus,
               headers: corsHeaders,
             })
           }

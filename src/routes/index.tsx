@@ -554,8 +554,20 @@ function Dashboard() {
           let data;
 
           if (primaryGateway.useStatsEndpoint) {
-            // Use same endpoints as setup's Test Connection: GET /stats and GET /sessions via proxy.
+            // Same as setup: try direct fetch first (works when same network or gateway allows CORS), then proxy.
             setRemoteFetchError(null);
+
+            const base = (primaryGateway.url ?? "").replace(/\/$/, "");
+            const baseUrl =
+              base.startsWith("http://") || base.startsWith("https://")
+                ? base
+                : `http://${base}`;
+            const headers: Record<string, string> = {
+              "Content-Type": "application/json",
+            };
+            if (primaryGateway.token) {
+              headers["Authorization"] = `Bearer ${primaryGateway.token}`;
+            }
 
             const proxyPost = (path: string) =>
               fetch("/api/stats-proxy", {
@@ -568,10 +580,25 @@ function Dashboard() {
                 }),
               });
 
-            const [resStats, resSessions] = await Promise.all([
-              proxyPost("/stats"),
-              proxyPost("/sessions"),
-            ]);
+            let resStats: Response;
+            let resSessions: Response;
+            try {
+              const [s, sess] = await Promise.all([
+                fetch(`${baseUrl}/stats`, { headers }),
+                fetch(`${baseUrl}/sessions`, { headers }),
+              ]);
+              if (s.ok) {
+                resStats = s;
+                resSessions = sess;
+              } else {
+                throw new Error("direct failed");
+              }
+            } catch {
+              [resStats, resSessions] = await Promise.all([
+                proxyPost("/stats"),
+                proxyPost("/sessions"),
+              ]);
+            }
 
             if (!resStats.ok) {
               const errBody = await resStats.text();

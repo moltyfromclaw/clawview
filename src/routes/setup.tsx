@@ -97,9 +97,17 @@ function SetupPage() {
           });
           setStep(4);
         } else {
+          let errMessage = "Connection failed. Make sure the stats server is running and accessible.";
+          const text = await proxyRes.text();
+          try {
+            const errBody = JSON.parse(text);
+            if (errBody?.error) errMessage = errBody.error;
+          } catch {
+            if (text) errMessage = text;
+          }
           setTestResult({
             ok: false,
-            message: `❌ Connection failed. Make sure the stats server is running and accessible. Error: ${error instanceof Error ? error.message : "Network error"}`,
+            message: `❌ ${errMessage}`,
           });
         }
       } catch (proxyError) {
