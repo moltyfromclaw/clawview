@@ -582,21 +582,25 @@ function Dashboard() {
 
             let resStats: Response;
             let resSessions: Response;
+            let resTasks: Response;
             try {
-              const [s, sess] = await Promise.all([
+              const [s, sess, tasks] = await Promise.all([
                 fetch(`${baseUrl}/stats`, { headers }),
                 fetch(`${baseUrl}/sessions`, { headers }),
+                fetch(`${baseUrl}/tasks?limit=200`, { headers }),
               ]);
               if (s.ok) {
                 resStats = s;
                 resSessions = sess;
+                resTasks = tasks;
               } else {
                 throw new Error("direct failed");
               }
             } catch {
-              [resStats, resSessions] = await Promise.all([
+              [resStats, resSessions, resTasks] = await Promise.all([
                 proxyPost("/stats"),
                 proxyPost("/sessions"),
+                proxyPost("/tasks?limit=200"),
               ]);
             }
 
@@ -655,6 +659,55 @@ function Dashboard() {
               dailySummaries: statsJson.dailySummaries ?? [],
             };
 
+            // Parse tasks from /tasks endpoint
+            let tasksList: Task[] = [];
+            let taskStatsData: TaskStats = {
+              communication: { count: 0, totalCost: 0, avgDuration: 0 },
+              research: { count: 0, totalCost: 0, avgDuration: 0 },
+              coding: { count: 0, totalCost: 0, avgDuration: 0 },
+              file_management: { count: 0, totalCost: 0, avgDuration: 0 },
+              monitoring: { count: 0, totalCost: 0, avgDuration: 0 },
+              scheduling: { count: 0, totalCost: 0, avgDuration: 0 },
+              browser: { count: 0, totalCost: 0, avgDuration: 0 },
+              system: { count: 0, totalCost: 0, avgDuration: 0 },
+              other: { count: 0, totalCost: 0, avgDuration: 0 },
+            };
+
+            if (resTasks.ok) {
+              try {
+                const tasksJson = await resTasks.json();
+                // Handle both { tasks: [...] } and direct array format
+                const rawTasks = Array.isArray(tasksJson) 
+                  ? tasksJson 
+                  : (tasksJson.tasks || []);
+                
+                tasksList = rawTasks.map((t: any) => ({
+                  id: t.id || '',
+                  sessionId: t.sessionId || '',
+                  startTime: t.startTime || new Date().toISOString(),
+                  endTime: t.endTime || new Date().toISOString(),
+                  durationMs: t.durationMs || 0,
+                  summary: t.summary || 'Task',
+                  category: t.category || 'other',
+                  tags: t.tags || [],
+                  activityCount: t.activityCount || 0,
+                  toolsUsed: t.toolsUsed || [],
+                  cost: t.cost || 0,
+                  inputTokens: t.inputTokens || 0,
+                  outputTokens: t.outputTokens || 0,
+                  triggerType: t.triggerType || 'unknown',
+                  triggerText: t.triggerText || '',
+                }));
+
+                // Use taskStats from server if available
+                if (tasksJson.taskStats) {
+                  taskStatsData = tasksJson.taskStats;
+                }
+              } catch (e) {
+                console.error('[ClawView] Failed to parse tasks:', e);
+              }
+            }
+
             // Convert stats endpoint format to dashboard format
             data = {
               stats: statsData.stats || {
@@ -668,50 +721,9 @@ function Dashboard() {
               },
               dailySummaries: statsData.dailySummaries || [],
               sessions: statsData.sessions || [],
-              tasks: [] as Task[], // Stats endpoint doesn't provide tasks, generate from sessions
-              taskStats: {
-                communication: { count: 0, totalCost: 0, avgDuration: 0 },
-                research: { count: 0, totalCost: 0, avgDuration: 0 },
-                coding: { count: 0, totalCost: 0, avgDuration: 0 },
-                file_management: { count: 0, totalCost: 0, avgDuration: 0 },
-                monitoring: { count: 0, totalCost: 0, avgDuration: 0 },
-                scheduling: { count: 0, totalCost: 0, avgDuration: 0 },
-                browser: { count: 0, totalCost: 0, avgDuration: 0 },
-                system: { count: 0, totalCost: 0, avgDuration: 0 },
-                other: { count: 0, totalCost: 0, avgDuration: 0 },
-              },
+              tasks: tasksList,
+              taskStats: taskStatsData,
             };
-
-            // Generate tasks from sessions
-            for (const session of statsData.sessions || []) {
-              const category = categorizeSession(session);
-              data.tasks.push({
-                id: session.id ?? "",
-                sessionId: session.sessionId || (session.id ?? ""),
-                startTime: session.firstTimestamp || new Date().toISOString(),
-                endTime: session.lastTimestamp || new Date().toISOString(),
-                durationMs:
-                  session.lastTimestamp && session.firstTimestamp
-                    ? new Date(session.lastTimestamp).getTime() -
-                      new Date(session.firstTimestamp).getTime()
-                    : 0,
-                summary: `Session: ${session.messageCount || 0} messages`,
-                category,
-                tags: Object.keys(session.tools || {}).slice(0, 3),
-                activityCount: session.messageCount || 0,
-                toolsUsed: Object.keys(session.tools || {}),
-                cost: session.cost || 0,
-                inputTokens: session.inputTokens || 0,
-                outputTokens: session.outputTokens || 0,
-                triggerType: "unknown",
-              });
-
-              // Update task stats
-              if (data.taskStats[category]) {
-                data.taskStats[category].count++;
-                data.taskStats[category].totalCost += session.cost || 0;
-              }
-            }
           } else {
             // Use gateway proxy (sessions_list tool)
             data = await fetchRemoteDashboardData(primaryGateway);

@@ -5,7 +5,7 @@ export const Route = createFileRoute("/setup")({
   component: SetupPage,
 });
 
-const SETUP_PROMPT = `I need you to create a stats API endpoint that ClawView can connect to remotely. This endpoint should expose my session history and cost data.
+const SETUP_PROMPT = `I need you to create a stats API endpoint that ClawView can connect to remotely. This endpoint should expose my session history, cost data, and tasks.
 
 Create a Node.js script at ~/.openclaw/scripts/stats-server.mjs that:
 
@@ -16,11 +16,26 @@ Create a Node.js script at ~/.openclaw/scripts/stats-server.mjs that:
    - Tool usage counts
    - Model usage counts
    - Per-day summaries
+   - TASKS: Group messages by user triggers into logical tasks (each user message starts a new task, assistant responses are part of that task)
+
 3. Serves this data via HTTP on port 18790 with CORS enabled
+
 4. Endpoints needed:
-   - GET /stats - overall stats
+   - GET /stats - overall stats + daily summaries
    - GET /sessions - list of sessions with metadata
+   - GET /tasks - list of tasks with: id, sessionId, startTime, endTime, durationMs, summary, category, toolsUsed, cost, inputTokens, outputTokens, triggerType, triggerText
+   - GET /tasks?limit=N&category=X - filtered task list
    - GET / - all data combined
+
+5. Task extraction logic:
+   - Each user message starts a new task
+   - Collect all assistant responses until next user message
+   - Sum up cost, tokens, tools used
+   - Categorize by tools: message->communication, web_search->research, browser->browser, write/edit->coding, exec->monitoring, etc.
+   - Generate summary from tools used or trigger text
+
+6. Include taskStats in /tasks response:
+   - Per-category counts: { category: { count, totalCost, avgDuration } }
 
 The server should:
 - Use native Node.js (no npm install needed)
