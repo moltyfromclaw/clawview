@@ -860,6 +860,12 @@ function Dashboard() {
                 🏢 Office
               </Link>
               <Link
+                to="/instances"
+                className="px-2.5 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg transition-colors"
+              >
+                ☁️ Instances
+              </Link>
+              <Link
                 to="/setup"
                 className="px-2.5 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg transition-colors"
               >
