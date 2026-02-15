@@ -8,6 +8,8 @@ directory = "./dist/client"
 
 [vars]
 SAAS_MODE = "true"
+VITE_DEPLOY_API_URL = "https://openclaw-deploy.holly-3f6.workers.dev"
+# VITE_CLERK_PUBLISHABLE_KEY - set in dashboard as secret
 
 [[routes]]
 pattern = "viewholly.com/*"

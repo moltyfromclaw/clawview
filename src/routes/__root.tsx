@@ -1,4 +1,5 @@
 import { HeadContent, Scripts, createRootRoute, Outlet } from '@tanstack/react-router'
+import { ClerkProvider } from '@clerk/tanstack-react-start'
 
 import appCss from '../styles.css?url'
 
@@ -21,14 +22,16 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <html lang="en" className="dark">
-      <head>
-        <HeadContent />
-      </head>
-      <body className="bg-gray-950 text-white antialiased min-h-screen">
-        <Outlet />
-        <Scripts />
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en" className="dark">
+        <head>
+          <HeadContent />
+        </head>
+        <body className="bg-gray-950 text-white antialiased min-h-screen">
+          <Outlet />
+          <Scripts />
+        </body>
+      </html>
+    </ClerkProvider>
   )
 }

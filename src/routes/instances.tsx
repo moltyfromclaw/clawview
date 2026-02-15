@@ -1,5 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
+import { useAuth, useUser, UserButton, SignedIn, SignedOut, RedirectToSignIn } from "@clerk/tanstack-react-start";
 import {
   Server,
   Plus,
@@ -14,6 +15,7 @@ import {
   XCircle,
   ExternalLink,
   ChevronDown,
+  LogIn,
 } from "lucide-react";
 
 export const Route = createFileRoute("/instances")({
@@ -75,6 +77,9 @@ const LOCATIONS = {
 };
 
 function InstancesPage() {
+  const { isSignedIn, isLoaded } = useAuth();
+  const { user } = useUser();
+  
   const [instances, setInstances] = useState<Instance[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -227,6 +232,33 @@ function InstancesPage() {
     }
   };
 
+  // Show loading while Clerk initializes
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
+      </div>
+    );
+  }
+
+  // Redirect to sign-in if not authenticated
+  if (!isSignedIn) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex flex-col items-center justify-center p-4">
+        <Cloud className="w-16 h-16 text-purple-400 mb-6" />
+        <h1 className="text-2xl font-bold mb-2">Instance Manager</h1>
+        <p className="text-gray-400 mb-6">Sign in to manage your OpenClaw instances</p>
+        <Link
+          to="/sign-in"
+          className="flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-500 rounded-lg transition"
+        >
+          <LogIn className="w-4 h-4" />
+          Sign In
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950">
       {/* Header */}
@@ -241,13 +273,16 @@ function InstancesPage() {
               <h1 className="text-xl font-bold">Instance Manager</h1>
             </div>
           </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg transition"
-          >
-            <Plus className="w-4 h-4" />
-            Deploy Instance
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowCreate(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg transition"
+            >
+              <Plus className="w-4 h-4" />
+              Deploy Instance
+            </button>
+            <UserButton afterSignOutUrl="/" />
+          </div>
         </div>
       </header>
 

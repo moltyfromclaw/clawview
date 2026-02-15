@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as StandupRouteImport } from './routes/standup'
+import { Route as SignUpRouteImport } from './routes/sign-up'
+import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as OfficeRouteImport } from './routes/office'
 import { Route as InstancesRouteImport } from './routes/instances'
@@ -29,6 +31,16 @@ import { Route as ApiRealtimeSessionRouteImport } from './routes/api/realtime/se
 const StandupRoute = StandupRouteImport.update({
   id: '/standup',
   path: '/standup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignUpRoute = SignUpRouteImport.update({
+  id: '/sign-up',
+  path: '/sign-up',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignInRoute = SignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SetupRoute = SetupRouteImport.update({
@@ -113,6 +125,8 @@ export interface FileRoutesByFullPath {
   '/instances': typeof InstancesRoute
   '/office': typeof OfficeRoute
   '/setup': typeof SetupRoute
+  '/sign-in': typeof SignInRoute
+  '/sign-up': typeof SignUpRoute
   '/standup': typeof StandupRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/gateway-proxy': typeof ApiGatewayProxyRoute
@@ -131,6 +145,8 @@ export interface FileRoutesByTo {
   '/instances': typeof InstancesRoute
   '/office': typeof OfficeRoute
   '/setup': typeof SetupRoute
+  '/sign-in': typeof SignInRoute
+  '/sign-up': typeof SignUpRoute
   '/standup': typeof StandupRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/gateway-proxy': typeof ApiGatewayProxyRoute
@@ -150,6 +166,8 @@ export interface FileRoutesById {
   '/instances': typeof InstancesRoute
   '/office': typeof OfficeRoute
   '/setup': typeof SetupRoute
+  '/sign-in': typeof SignInRoute
+  '/sign-up': typeof SignUpRoute
   '/standup': typeof StandupRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/gateway-proxy': typeof ApiGatewayProxyRoute
@@ -170,6 +188,8 @@ export interface FileRouteTypes {
     | '/instances'
     | '/office'
     | '/setup'
+    | '/sign-in'
+    | '/sign-up'
     | '/standup'
     | '/api/agents'
     | '/api/gateway-proxy'
@@ -188,6 +208,8 @@ export interface FileRouteTypes {
     | '/instances'
     | '/office'
     | '/setup'
+    | '/sign-in'
+    | '/sign-up'
     | '/standup'
     | '/api/agents'
     | '/api/gateway-proxy'
@@ -206,6 +228,8 @@ export interface FileRouteTypes {
     | '/instances'
     | '/office'
     | '/setup'
+    | '/sign-in'
+    | '/sign-up'
     | '/standup'
     | '/api/agents'
     | '/api/gateway-proxy'
@@ -225,6 +249,8 @@ export interface RootRouteChildren {
   InstancesRoute: typeof InstancesRoute
   OfficeRoute: typeof OfficeRoute
   SetupRoute: typeof SetupRoute
+  SignInRoute: typeof SignInRoute
+  SignUpRoute: typeof SignUpRoute
   StandupRoute: typeof StandupRoute
   ApiAgentsRoute: typeof ApiAgentsRoute
   ApiGatewayProxyRoute: typeof ApiGatewayProxyRoute
@@ -244,6 +270,20 @@ declare module '@tanstack/react-router' {
       path: '/standup'
       fullPath: '/standup'
       preLoaderRoute: typeof StandupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-up': {
+      id: '/sign-up'
+      path: '/sign-up'
+      fullPath: '/sign-up'
+      preLoaderRoute: typeof SignUpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-in': {
+      id: '/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof SignInRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/setup': {
@@ -372,6 +412,8 @@ const rootRouteChildren: RootRouteChildren = {
   InstancesRoute: InstancesRoute,
   OfficeRoute: OfficeRoute,
   SetupRoute: SetupRoute,
+  SignInRoute: SignInRoute,
+  SignUpRoute: SignUpRoute,
   StandupRoute: StandupRoute,
   ApiAgentsRoute: ApiAgentsRoute,
   ApiGatewayProxyRoute: ApiGatewayProxyRoute,
