@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
-import { useAuth, useUser, UserButton, SignedIn, SignedOut, RedirectToSignIn } from "@clerk/tanstack-react-start";
+import { useState, useEffect, useMemo } from "react";
+import * as ClerkReact from "@clerk/tanstack-react-start";
 import {
   Server,
   Plus,
@@ -17,6 +17,45 @@ import {
   ChevronDown,
   LogIn,
 } from "lucide-react";
+
+// Check if Clerk is configured at runtime
+const CLERK_ENABLED = typeof window !== 'undefined' 
+  ? !!(window as any).__CLERK_PUBLISHABLE_KEY__ || !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
+  : !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+// Safe Clerk hooks - return mock data when Clerk isn't configured
+function useSafeAuth() {
+  if (!CLERK_ENABLED) {
+    return { isSignedIn: true, isLoaded: true };
+  }
+  try {
+    return ClerkReact.useAuth();
+  } catch {
+    return { isSignedIn: true, isLoaded: true };
+  }
+}
+
+function useSafeUser() {
+  if (!CLERK_ENABLED) {
+    return { user: null };
+  }
+  try {
+    return ClerkReact.useUser();
+  } catch {
+    return { user: null };
+  }
+}
+
+function SafeUserButton() {
+  if (!CLERK_ENABLED) {
+    return null;
+  }
+  try {
+    return <ClerkReact.UserButton afterSignOutUrl="/" />;
+  } catch {
+    return null;
+  }
+}
 
 export const Route = createFileRoute("/instances")({
   component: InstancesPage,
@@ -77,8 +116,8 @@ const LOCATIONS = {
 };
 
 function InstancesPage() {
-  const { isSignedIn, isLoaded } = useAuth();
-  const { user } = useUser();
+  const { isSignedIn, isLoaded } = useSafeAuth();
+  const { user } = useSafeUser();
   
   const [instances, setInstances] = useState<Instance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -281,7 +320,7 @@ function InstancesPage() {
               <Plus className="w-4 h-4" />
               Deploy Instance
             </button>
-            <UserButton afterSignOutUrl="/" />
+            <SafeUserButton />
           </div>
         </div>
       </header>

@@ -1,14 +1,30 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { SignUp } from "@clerk/tanstack-react-start";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import * as ClerkReact from "@clerk/tanstack-react-start";
 
 export const Route = createFileRoute("/sign-up")({
   component: SignUpPage,
 });
 
+const CLERK_ENABLED = typeof window !== 'undefined' 
+  ? !!(window as any).__CLERK_PUBLISHABLE_KEY__ || !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
+  : !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
 function SignUpPage() {
+  if (!CLERK_ENABLED) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex flex-col items-center justify-center p-4">
+        <h1 className="text-2xl font-bold mb-4">Authentication Not Configured</h1>
+        <p className="text-gray-400 mb-6">Clerk authentication is not set up yet.</p>
+        <Link to="/instances" className="px-6 py-3 bg-purple-600 hover:bg-purple-500 rounded-lg transition">
+          Continue to Instances →
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex items-center justify-center p-4">
-      <SignUp 
+      <ClerkReact.SignUp 
         routing="path" 
         path="/sign-up" 
         signInUrl="/sign-in"
