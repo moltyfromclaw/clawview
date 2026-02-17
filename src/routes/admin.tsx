@@ -74,6 +74,13 @@ interface EmailAccount {
   createdAt: number;
 }
 
+interface GitHubAccount {
+  name: string;
+  email: string;
+  username?: string;
+  createdAt: number;
+}
+
 interface Instance {
   id: string;
   name: string;
@@ -85,9 +92,10 @@ interface Instance {
 function AdminPage() {
   const [adminToken, setAdminToken] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [activeTab, setActiveTab] = useState<"vault" | "emails" | "instances">("vault");
+  const [activeTab, setActiveTab] = useState<"vault" | "emails" | "github" | "instances">("vault");
   const [vaultEntries, setVaultEntries] = useState<VaultEntry[]>([]);
   const [emailAccounts, setEmailAccounts] = useState<EmailAccount[]>([]);
+  const [githubAccounts, setGithubAccounts] = useState<GitHubAccount[]>([]);
   const [instances, setInstances] = useState<Instance[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -123,6 +131,17 @@ function AdminPage() {
       if (vaultRes.ok) {
         const data = await vaultRes.json();
         setVaultEntries(data.entries || []);
+        
+        // Extract GitHub accounts from vault
+        const ghAccounts = (data.entries || [])
+          .filter((e: VaultEntry) => e.service === "github")
+          .map((e: VaultEntry) => ({
+            name: e.name,
+            email: e.fields.includes("email") ? "(set)" : "",
+            username: e.fields.includes("username") ? "(set)" : undefined,
+            createdAt: e.createdAt,
+          }));
+        setGithubAccounts(ghAccounts);
       }
 
       // Load email accounts
@@ -181,6 +200,7 @@ function AdminPage() {
             {[
               { id: "vault", label: "Secrets Vault", icon: Key },
               { id: "emails", label: "Email Accounts", icon: Mail },
+              { id: "github", label: "GitHub Accounts", icon: Github },
               { id: "instances", label: "Instances", icon: Server },
             ].map((tab) => (
               <button
@@ -207,6 +227,7 @@ function AdminPage() {
 
         {activeTab === "vault" && <VaultTab entries={vaultEntries} adminToken={adminToken} onRefresh={loadData} />}
         {activeTab === "emails" && <EmailsTab accounts={emailAccounts} adminToken={adminToken} onRefresh={loadData} />}
+        {activeTab === "github" && <GitHubTab accounts={githubAccounts} emailAccounts={emailAccounts} adminToken={adminToken} onRefresh={loadData} />}
         {activeTab === "instances" && (
           <InstancesTab instances={instances} vaultEntries={vaultEntries} adminToken={adminToken} onRefresh={loadData} />
         )}
@@ -683,6 +704,224 @@ function InboxModal({ address, adminToken, onClose }: { address: string; adminTo
             </div>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// GitHub Tab
+function GitHubTab({
+  accounts,
+  emailAccounts,
+  adminToken,
+  onRefresh,
+}: {
+  accounts: GitHubAccount[];
+  emailAccounts: EmailAccount[];
+  adminToken: string;
+  onRefresh: () => void;
+}) {
+  const [showCreate, setShowCreate] = useState(false);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-2xl font-bold">GitHub Accounts</h2>
+          <p className="text-gray-400">Manage GitHub accounts for agents</p>
+        </div>
+        <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg">
+          <Plus className="w-4 h-4" />
+          Add GitHub Account
+        </button>
+      </div>
+
+      {showCreate && (
+        <GitHubForm
+          emailAccounts={emailAccounts}
+          adminToken={adminToken}
+          onClose={() => setShowCreate(false)}
+          onSaved={() => { setShowCreate(false); onRefresh(); }}
+        />
+      )}
+
+      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="text-left text-gray-400 text-sm border-b border-gray-800">
+              <th className="px-4 py-3 font-medium">Name</th>
+              <th className="px-4 py-3 font-medium">Email</th>
+              <th className="px-4 py-3 font-medium">Username</th>
+              <th className="px-4 py-3 font-medium">Created</th>
+              <th className="px-4 py-3 font-medium"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {accounts.map((account) => (
+              <tr key={account.name} className="border-b border-gray-800/50">
+                <td className="px-4 py-3 font-mono text-sm">{account.name}</td>
+                <td className="px-4 py-3">{account.email}</td>
+                <td className="px-4 py-3">{account.username || "-"}</td>
+                <td className="px-4 py-3 text-gray-400 text-sm">{new Date(account.createdAt).toLocaleDateString()}</td>
+                <td className="px-4 py-3">
+                  <button
+                    onClick={async () => {
+                      if (!confirm(`Delete GitHub account "${account.name}"?`)) return;
+                      await fetch(`${DEPLOY_API}/vault/github/${account.name}`, {
+                        method: "DELETE",
+                        headers: { Authorization: `Bearer ${adminToken}` },
+                      });
+                      onRefresh();
+                    }}
+                    className="p-2 hover:bg-gray-800 rounded text-gray-400 hover:text-red-400"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {accounts.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-4 py-12 text-center text-gray-500">
+                  No GitHub accounts. Add one to get started.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function GitHubForm({
+  emailAccounts,
+  adminToken,
+  onClose,
+  onSaved,
+}: {
+  emailAccounts: EmailAccount[];
+  adminToken: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !email || !password) return;
+    setSaving(true);
+
+    try {
+      const payload: any = { email, password };
+      if (username) payload.username = username;
+
+      const res = await fetch(`${DEPLOY_API}/vault/github/${name}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        onSaved();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to create");
+      }
+    } catch (e) {
+      alert("Failed to create GitHub account");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-md">
+        <div className="p-6 border-b border-gray-800 flex items-center justify-between">
+          <h2 className="text-xl font-bold">Add GitHub Account</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-800 rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">Account Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+              placeholder="dottie"
+            />
+            <p className="mt-1 text-xs text-gray-500">Used to reference this account (e.g., github/dottie)</p>
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">Email</label>
+            <select
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+            >
+              <option value="">Select email account...</option>
+              {emailAccounts.map((acc) => (
+                <option key={acc.address} value={acc.address}>{acc.address}</option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500">Email for GitHub verification</p>
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">Username (optional)</label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+              placeholder="dottie-agent"
+            />
+            <p className="mt-1 text-xs text-gray-500">GitHub username if account already exists</p>
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">Password</label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg pr-10"
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-white"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-800">
+            <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving || !name || !email || !password}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 rounded-lg"
+            >
+              {saving ? "Creating..." : "Add Account"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
