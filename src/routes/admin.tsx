@@ -944,9 +944,23 @@ function InstancesTab({
   const [deployForm, setDeployForm] = useState({
     name: "",
     secrets: [] as string[],
+    provider: "hetzner",
     serverType: "cx22",
   });
   const [deploying, setDeploying] = useState(false);
+
+  const SERVER_TYPES = {
+    hetzner: [
+      { value: "cx22", label: "cx22 (2 vCPU, 4GB) €4.51/mo" },
+      { value: "cx32", label: "cx32 (4 vCPU, 8GB) €8.21/mo" },
+      { value: "cx42", label: "cx42 (8 vCPU, 16GB) €15.61/mo" },
+    ],
+    aws: [
+      { value: "t3.small", label: "t3.small (2 vCPU, 2GB) ~$15/mo" },
+      { value: "t3.medium", label: "t3.medium (2 vCPU, 4GB) ~$30/mo" },
+      { value: "t3.large", label: "t3.large (2 vCPU, 8GB) ~$60/mo" },
+    ],
+  };
 
   const handleDeploy = async () => {
     if (!deployForm.name) return;
@@ -955,7 +969,10 @@ function InstancesTab({
     try {
       const res = await fetch(`${DEPLOY_API}/instances`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "X-Cloud-Provider": deployForm.provider,
+        },
         body: JSON.stringify({
           name: deployForm.name,
           secrets: deployForm.secrets,
@@ -965,7 +982,7 @@ function InstancesTab({
 
       if (res.ok) {
         setShowDeploy(false);
-        setDeployForm({ name: "", secrets: [], serverType: "cx22" });
+        setDeployForm({ name: "", secrets: [], provider: "hetzner", serverType: "cx22" });
         onRefresh();
       } else {
         const data = await res.json();
@@ -993,7 +1010,7 @@ function InstancesTab({
       {showDeploy && (
         <div className="mb-6 p-4 bg-gray-900 border border-gray-800 rounded-xl">
           <h3 className="font-semibold mb-4">Deploy New Agent</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm text-gray-400 mb-1">Instance Name</label>
               <input
@@ -1001,8 +1018,26 @@ function InstancesTab({
                 value={deployForm.name}
                 onChange={(e) => setDeployForm({ ...deployForm, name: e.target.value })}
                 className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg"
-                placeholder="video-agent-01"
+                placeholder="dottie"
               />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Cloud Provider</label>
+              <select
+                value={deployForm.provider}
+                onChange={(e) => {
+                  const provider = e.target.value as "hetzner" | "aws";
+                  setDeployForm({ 
+                    ...deployForm, 
+                    provider, 
+                    serverType: SERVER_TYPES[provider][0].value 
+                  });
+                }}
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+              >
+                <option value="hetzner">Hetzner Cloud</option>
+                <option value="aws">AWS EC2</option>
+              </select>
             </div>
             <div>
               <label className="block text-sm text-gray-400 mb-1">Server Type</label>
@@ -1011,9 +1046,9 @@ function InstancesTab({
                 onChange={(e) => setDeployForm({ ...deployForm, serverType: e.target.value })}
                 className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg"
               >
-                <option value="cx22">cx22 (2 vCPU, 4GB) €4.51/mo</option>
-                <option value="cx32">cx32 (4 vCPU, 8GB) €8.21/mo</option>
-                <option value="cx42">cx42 (8 vCPU, 16GB) €15.61/mo</option>
+                {SERVER_TYPES[deployForm.provider as "hetzner" | "aws"].map((type) => (
+                  <option key={type.value} value={type.value}>{type.label}</option>
+                ))}
               </select>
             </div>
           </div>
