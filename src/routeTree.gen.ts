@@ -19,6 +19,7 @@ import { Route as DebugRouteImport } from './routes/debug'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TasksTaskIdRouteImport } from './routes/tasks.$taskId'
+import { Route as ChatInstanceIdRouteImport } from './routes/chat.$instanceId'
 import { Route as ApiTasksRouteImport } from './routes/api/tasks'
 import { Route as ApiStatsProxyRouteImport } from './routes/api/stats-proxy'
 import { Route as ApiStatsRouteImport } from './routes/api/stats'
@@ -77,6 +78,11 @@ const IndexRoute = IndexRouteImport.update({
 const TasksTaskIdRoute = TasksTaskIdRouteImport.update({
   id: '/tasks/$taskId',
   path: '/tasks/$taskId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatInstanceIdRoute = ChatInstanceIdRouteImport.update({
+  id: '/chat/$instanceId',
+  path: '/chat/$instanceId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTasksRoute = ApiTasksRouteImport.update({
@@ -142,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/api/stats': typeof ApiStatsRoute
   '/api/stats-proxy': typeof ApiStatsProxyRoute
   '/api/tasks': typeof ApiTasksRouteWithChildren
+  '/chat/$instanceId': typeof ChatInstanceIdRoute
   '/tasks/$taskId': typeof TasksTaskIdRoute
   '/api/realtime/session': typeof ApiRealtimeSessionRoute
   '/api/tasks/$taskId': typeof ApiTasksTaskIdRoute
@@ -163,6 +170,7 @@ export interface FileRoutesByTo {
   '/api/stats': typeof ApiStatsRoute
   '/api/stats-proxy': typeof ApiStatsProxyRoute
   '/api/tasks': typeof ApiTasksRouteWithChildren
+  '/chat/$instanceId': typeof ChatInstanceIdRoute
   '/tasks/$taskId': typeof TasksTaskIdRoute
   '/api/realtime/session': typeof ApiRealtimeSessionRoute
   '/api/tasks/$taskId': typeof ApiTasksTaskIdRoute
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/api/stats': typeof ApiStatsRoute
   '/api/stats-proxy': typeof ApiStatsProxyRoute
   '/api/tasks': typeof ApiTasksRouteWithChildren
+  '/chat/$instanceId': typeof ChatInstanceIdRoute
   '/tasks/$taskId': typeof TasksTaskIdRoute
   '/api/realtime/session': typeof ApiRealtimeSessionRoute
   '/api/tasks/$taskId': typeof ApiTasksTaskIdRoute
@@ -208,6 +217,7 @@ export interface FileRouteTypes {
     | '/api/stats'
     | '/api/stats-proxy'
     | '/api/tasks'
+    | '/chat/$instanceId'
     | '/tasks/$taskId'
     | '/api/realtime/session'
     | '/api/tasks/$taskId'
@@ -229,6 +239,7 @@ export interface FileRouteTypes {
     | '/api/stats'
     | '/api/stats-proxy'
     | '/api/tasks'
+    | '/chat/$instanceId'
     | '/tasks/$taskId'
     | '/api/realtime/session'
     | '/api/tasks/$taskId'
@@ -250,6 +261,7 @@ export interface FileRouteTypes {
     | '/api/stats'
     | '/api/stats-proxy'
     | '/api/tasks'
+    | '/chat/$instanceId'
     | '/tasks/$taskId'
     | '/api/realtime/session'
     | '/api/tasks/$taskId'
@@ -272,6 +284,7 @@ export interface RootRouteChildren {
   ApiStatsRoute: typeof ApiStatsRoute
   ApiStatsProxyRoute: typeof ApiStatsProxyRoute
   ApiTasksRoute: typeof ApiTasksRouteWithChildren
+  ChatInstanceIdRoute: typeof ChatInstanceIdRoute
   TasksTaskIdRoute: typeof TasksTaskIdRoute
   ApiRealtimeSessionRoute: typeof ApiRealtimeSessionRoute
 }
@@ -346,6 +359,13 @@ declare module '@tanstack/react-router' {
       path: '/tasks/$taskId'
       fullPath: '/tasks/$taskId'
       preLoaderRoute: typeof TasksTaskIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat/$instanceId': {
+      id: '/chat/$instanceId'
+      path: '/chat/$instanceId'
+      fullPath: '/chat/$instanceId'
+      preLoaderRoute: typeof ChatInstanceIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/tasks': {
@@ -443,6 +463,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiStatsRoute: ApiStatsRoute,
   ApiStatsProxyRoute: ApiStatsProxyRoute,
   ApiTasksRoute: ApiTasksRouteWithChildren,
+  ChatInstanceIdRoute: ChatInstanceIdRoute,
   TasksTaskIdRoute: TasksTaskIdRoute,
   ApiRealtimeSessionRoute: ApiRealtimeSessionRoute,
 }

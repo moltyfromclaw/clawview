@@ -16,6 +16,7 @@ import {
   ExternalLink,
   ChevronDown,
   LogIn,
+  MessageSquare,
 } from "lucide-react";
 
 // Check if Clerk is configured at runtime
@@ -467,16 +468,26 @@ function InstancesPage() {
                   </button>
                 </div>
 
-                {/* Connect Link */}
+                {/* Connect Links */}
                 {instance.ip && (instance.status === "running" || instance.status === "active") && (
-                  <a
-                    href={`http://${instance.ip}:18789`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-3 flex items-center justify-center gap-2 text-sm text-purple-400 hover:text-purple-300 transition"
-                  >
-                    Open Dashboard <ExternalLink className="w-3 h-3" />
-                  </a>
+                  <div className="mt-3 flex gap-2">
+                    <Link
+                      to="/chat/$instanceId"
+                      params={{ instanceId: instance.name || instance.id }}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 rounded-lg text-sm transition"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      Chat
+                    </Link>
+                    <a
+                      href={`http://${instance.ip}:18789`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm text-gray-400 hover:text-gray-300 transition"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
                 )}
               </div>
             ))}
