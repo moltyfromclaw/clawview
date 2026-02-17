@@ -945,20 +945,23 @@ function InstancesTab({
     name: "",
     secrets: [] as string[],
     provider: "hetzner",
-    serverType: "cx22",
+    serverType: "cax11",  // ARM default - best value
   });
   const [deploying, setDeploying] = useState(false);
 
   const SERVER_TYPES = {
     hetzner: [
+      { value: "cax11", label: "cax11 ARM (2 vCPU, 4GB) €3.85/mo ⭐" },
       { value: "cx22", label: "cx22 (2 vCPU, 4GB) €4.51/mo" },
+      { value: "cax21", label: "cax21 ARM (4 vCPU, 8GB) €6.49/mo" },
       { value: "cx32", label: "cx32 (4 vCPU, 8GB) €8.21/mo" },
-      { value: "cx42", label: "cx42 (8 vCPU, 16GB) €15.61/mo" },
     ],
     aws: [
-      { value: "t3.small", label: "t3.small (2 vCPU, 2GB) ~$15/mo" },
-      { value: "t3.medium", label: "t3.medium (2 vCPU, 4GB) ~$30/mo" },
-      { value: "t3.large", label: "t3.large (2 vCPU, 8GB) ~$60/mo" },
+      { value: "t4g.small", label: "t4g.small ARM (2 vCPU, 2GB) ~$12/mo" },
+      { value: "t4g.medium", label: "t4g.medium ARM (2 vCPU, 4GB) ~$24/mo ⭐" },
+      { value: "t4g.large", label: "t4g.large ARM (2 vCPU, 8GB) ~$49/mo" },
+      { value: "c7g.medium", label: "c7g.medium ARM (1 vCPU, 2GB) ~$29/mo" },
+      { value: "c7g.large", label: "c7g.large ARM (2 vCPU, 4GB) ~$58/mo" },
     ],
   };
 
@@ -982,7 +985,7 @@ function InstancesTab({
 
       if (res.ok) {
         setShowDeploy(false);
-        setDeployForm({ name: "", secrets: [], provider: "hetzner", serverType: "cx22" });
+        setDeployForm({ name: "", secrets: [], provider: "hetzner", serverType: "cax11" });
         onRefresh();
       } else {
         const data = await res.json();
@@ -1027,10 +1030,12 @@ function InstancesTab({
                 value={deployForm.provider}
                 onChange={(e) => {
                   const provider = e.target.value as "hetzner" | "aws";
+                  // Default to recommended instance for each provider
+                  const defaultType = provider === "aws" ? "t4g.medium" : "cax11";
                   setDeployForm({ 
                     ...deployForm, 
                     provider, 
-                    serverType: SERVER_TYPES[provider][0].value 
+                    serverType: defaultType 
                   });
                 }}
                 className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg"
