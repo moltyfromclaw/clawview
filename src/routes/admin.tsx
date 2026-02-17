@@ -34,6 +34,7 @@ const DEPLOY_API = "https://openclaw-deploy.holly-3f6.workers.dev";
 const VAULT_SERVICES = {
   anthropic: { label: "Anthropic", fields: [{ key: "apiKey", label: "API Key", secret: true }] },
   openai: { label: "OpenAI", fields: [{ key: "apiKey", label: "API Key", secret: true }] },
+  moonshot: { label: "Moonshot (Kimi K2.5)", fields: [{ key: "apiKey", label: "API Key", secret: true }] },
   "fal-ai": { label: "fal.ai", fields: [{ key: "apiKey", label: "API Key", secret: true }] },
   huggingface: { label: "HuggingFace", fields: [{ key: "token", label: "Token", secret: true }] },
   github: {
