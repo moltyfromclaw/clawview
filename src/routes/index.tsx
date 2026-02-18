@@ -20,9 +20,9 @@ const isSaasMode = () => {
     if (params.get("saas") === "true") return true;
     if (params.get("saas") === "false") return false;
 
-    // Subdomains like molty.viewholly.com go straight to dashboard
+    // Subdomains like molty.hollyclaw.com go straight to dashboard
     const hostname = window.location.hostname;
-    if (hostname.includes(".viewholly.com") && !hostname.startsWith("www.")) {
+    if (hostname.includes(".hollyclaw.com") && !hostname.startsWith("www.")) {
       return false; // Not SAAS mode - show dashboard
     }
   }
@@ -33,7 +33,7 @@ const isSaasMode = () => {
   );
 };
 
-// Get gateway URL for subdomain (e.g., molty.viewholly.com -> Molty's gateway)
+// Get gateway URL for subdomain (e.g., molty.hollyclaw.com -> Molty's gateway)
 const getSubdomainGateway = (): {
   name: string;
   url: string;
@@ -42,7 +42,7 @@ const getSubdomainGateway = (): {
   if (typeof window === "undefined") return null;
 
   const hostname = window.location.hostname;
-  const match = hostname.match(/^([^.]+)\.viewholly\.com$/);
+  const match = hostname.match(/^([^.]+)\.hollyclaw\.com$/);
   if (!match) return null;
 
   const subdomain = match[1];
@@ -331,7 +331,7 @@ function Dashboard() {
     try {
       const agents: Agent[] = [...apiAgents];
 
-      // Add subdomain gateway if present (e.g., molty.viewholly.com)
+      // Add subdomain gateway if present (e.g., molty.hollyclaw.com)
       const subdomainGateway = getSubdomainGateway();
       if (subdomainGateway) {
         const exists = agents.some(

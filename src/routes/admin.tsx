@@ -561,7 +561,7 @@ function EmailsTab({ accounts, adminToken, onRefresh }: { accounts: EmailAccount
 
 function EmailForm({ adminToken, onClose, onSaved }: { adminToken: string; onClose: () => void; onSaved: () => void }) {
   const [address, setAddress] = useState("");
-  const [domain] = useState("viewholly.com");
+  const [domain] = useState("hollyclaw.com");
   const [saving, setSaving] = useState(false);
 
   const fullAddress = address ? `${address}@${domain}` : "";
