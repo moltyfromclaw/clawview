@@ -11,10 +11,14 @@ SAAS_MODE = "true"
 VITE_DEPLOY_API_URL = "https://openclaw-deploy.holly-3f6.workers.dev"
 # VITE_CLERK_PUBLISHABLE_KEY - set in dashboard as secret
 
+# Routes for hollyclaw.com
 [[routes]]
-pattern = "app.viewholly.com/*"
-zone_name = "viewholly.com"
+pattern = "app.hollyclaw.com/*"
+zone_name = "hollyclaw.com"
 
 [[routes]]
-pattern = "molty.viewholly.com/*"
-zone_name = "viewholly.com"
+pattern = "clawview.hollyclaw.com/*"
+zone_name = "hollyclaw.com"
+
+# Keep workers.dev as fallback
+# https://clawview.holly-3f6.workers.dev

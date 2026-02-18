@@ -17,6 +17,12 @@ export const Route = createFileRoute("/chat/$instanceId")({
 
 const DEPLOY_API = "https://openclaw-deploy.holly-3f6.workers.dev";
 
+// Get admin token from localStorage (set in instances page or manually)
+function getAdminToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('deploy_admin_token');
+}
+
 interface Message {
   id: string;
   role: "user" | "assistant" | "system";
@@ -32,6 +38,11 @@ interface InstanceInfo {
   provider: string;
 }
 
+interface ConnectionInfo {
+  gateway?: { token: string; createdAt: number };
+  tunnel?: { url: string; updatedAt: number };
+}
+
 function ChatPage() {
   const { instanceId } = useParams({ from: "/chat/$instanceId" });
   const [messages, setMessages] = useState<Message[]>([]);
@@ -42,7 +53,9 @@ function ChatPage() {
   const [error, setError] = useState<string | null>(null);
   const [instance, setInstance] = useState<InstanceInfo | null>(null);
   const [gatewayToken, setGatewayToken] = useState("");
-  const [showTokenInput, setShowTokenInput] = useState(false);
+  const [tunnelUrl, setTunnelUrl] = useState("");
+  const [showConnectionModal, setShowConnectionModal] = useState(false);
+  const [connectionInfo, setConnectionInfo] = useState<ConnectionInfo | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -51,11 +64,44 @@ function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Fetch instance info
+  // Fetch instance info and connection info
   useEffect(() => {
     const fetchInstance = async () => {
+      const adminToken = getAdminToken();
+      
+      // First try to fetch connection info directly by name
+      // This works even if the instance isn't in the list
+      if (adminToken) {
+        try {
+          const connRes = await fetch(
+            `${DEPLOY_API}/instances/${instanceId}/connection-info`,
+            {
+              headers: { Authorization: `Bearer ${adminToken}` },
+            }
+          );
+          if (connRes.ok) {
+            const connData = await connRes.json();
+            setConnectionInfo(connData);
+            setInstance({ id: instanceId, name: connData.name || instanceId, ip: '', status: 'unknown', provider: 'aws' });
+            
+            // Auto-populate if available
+            if (connData.tunnel?.url) {
+              setTunnelUrl(connData.tunnel.url);
+            }
+            if (connData.gateway?.token) {
+              setGatewayToken(connData.gateway.token);
+            }
+            setConnecting(false);
+            return;
+          }
+        } catch (e) {
+          console.log("Could not fetch connection info directly:", e);
+        }
+      }
+      
+      // Fallback: Try to find in instance list
       try {
-        // Try AWS first, then Hetzner
+        let foundInstance = null;
         for (const provider of ["aws", "hetzner"]) {
           const res = await fetch(`${DEPLOY_API}/instances?provider=${provider}`);
           if (res.ok) {
@@ -64,12 +110,43 @@ function ChatPage() {
               (i: any) => i.id === instanceId || i.name === instanceId
             );
             if (found) {
+              foundInstance = found;
               setInstance(found);
-              return;
+              break;
             }
           }
         }
-        setError("Instance not found");
+        
+        if (!foundInstance) {
+          setError("Instance not found. Make sure deploy_admin_token is set in localStorage.");
+          setConnecting(false);
+          return;
+        }
+        
+        // Try to fetch connection info by instance name
+        if (adminToken) {
+          try {
+            const connRes = await fetch(
+              `${DEPLOY_API}/instances/${foundInstance.name || instanceId}/connection-info`,
+              {
+                headers: { Authorization: `Bearer ${adminToken}` },
+              }
+            );
+            if (connRes.ok) {
+              const connData = await connRes.json();
+              setConnectionInfo(connData);
+              
+              if (connData.tunnel?.url) {
+                setTunnelUrl(connData.tunnel.url);
+              }
+              if (connData.gateway?.token) {
+                setGatewayToken(connData.gateway.token);
+              }
+            }
+          } catch (e) {
+            console.log("Could not fetch connection info:", e);
+          }
+        }
       } catch (err) {
         setError("Failed to fetch instance info");
       } finally {
@@ -79,10 +156,10 @@ function ChatPage() {
     fetchInstance();
   }, [instanceId]);
 
-  // Connect to WebSocket proxy
+  // Connect directly to tunnel URL using OpenClaw protocol
   const connect = useCallback(() => {
-    if (!instance?.ip || !gatewayToken) {
-      setShowTokenInput(true);
+    if (!tunnelUrl || !gatewayToken) {
+      setShowConnectionModal(true);
       setConnecting(false);
       return;
     }
@@ -90,70 +167,108 @@ function ChatPage() {
     setConnecting(true);
     setError(null);
 
-    // Connect via the proxy endpoint
-    const wsUrl = `wss://openclaw-deploy.holly-3f6.workers.dev/ws/proxy/${instance.ip}?token=${encodeURIComponent(gatewayToken)}`;
+    // Connect directly to the Cloudflare Tunnel URL
+    const baseUrl = tunnelUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const wsUrl = `wss://${baseUrl}`;
+    
+    console.log("Connecting to:", wsUrl);
     
     try {
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
+      let connectId = "";
 
       ws.onopen = () => {
-        setConnected(true);
-        setConnecting(false);
-        setShowTokenInput(false);
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            role: "system",
-            content: `Connected to ${instance.name || instance.ip}`,
-            timestamp: new Date(),
-          },
-        ]);
+        console.log("WebSocket opened, sending connect message...");
+        connectId = crypto.randomUUID();
+        // OpenClaw protocol: send connect message with auth token
+        const connectMsg = {
+          type: "req",
+          id: connectId,
+          method: "connect",
+          params: {
+            minProtocol: 3,
+            maxProtocol: 3,
+            client: {
+              id: "clawview-chat",
+              version: "1.0.0",
+              platform: "web",
+              mode: "operator"
+            },
+            role: "operator",
+            scopes: ["operator.read", "operator.write"],
+            caps: [],
+            auth: { token: gatewayToken },
+            locale: "en-US",
+            userAgent: navigator.userAgent,
+          }
+        };
+        ws.send(JSON.stringify(connectMsg));
       };
-
+      
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          console.log("Received:", data);
           
-          // Handle different message types from OpenClaw gateway
-          if (data.type === "agent:text" || data.type === "agent:message") {
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: crypto.randomUUID(),
-                role: "assistant",
-                content: data.content || data.text || data.message,
-                timestamp: new Date(),
-              },
-            ]);
-            setLoading(false);
-          } else if (data.type === "agent:thinking") {
-            // Show thinking indicator
+          // Handle connect response
+          if (data.type === "res" && data.id === connectId) {
+            if (data.ok) {
+              setConnected(true);
+              setConnecting(false);
+              setShowConnectionModal(false);
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: crypto.randomUUID(),
+                  role: "system",
+                  content: `Connected to ${instance?.name || baseUrl}`,
+                  timestamp: new Date(),
+                },
+              ]);
+            } else {
+              setError(data.error?.message || "Connection failed");
+              setConnecting(false);
+            }
+            return;
+          }
+          
+          // Handle chat events from OpenClaw gateway
+          if (data.type === "event") {
+            const evt = data.event;
+            if (evt === "chat" && data.payload) {
+              const p = data.payload;
+              if (p.role === "assistant" && p.content) {
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    id: crypto.randomUUID(),
+                    role: "assistant",
+                    content: p.content,
+                    timestamp: new Date(),
+                  },
+                ]);
+                setLoading(false);
+              }
+            } else if (evt === "chat.thinking" || evt === "agent.thinking") {
+              setLoading(true);
+            } else if (evt === "chat.done" || evt === "turn.end") {
+              setLoading(false);
+            }
+          }
+          
+          // Handle res for chat.send
+          if (data.type === "res" && data.ok && data.payload?.status === "started") {
             setLoading(true);
-          } else if (data.type === "agent:done" || data.type === "turn:end") {
-            setLoading(false);
-          } else if (data.type === "error") {
-            setError(data.message || "Unknown error");
-            setLoading(false);
           }
         } catch {
-          // Plain text message
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: crypto.randomUUID(),
-              role: "assistant",
-              content: event.data,
-              timestamp: new Date(),
-            },
-          ]);
-          setLoading(false);
+          console.log("Non-JSON message:", event.data);
         }
       };
 
-      ws.onerror = () => {
-        setError("WebSocket connection error");
+      ws.onerror = (e) => {
+        console.error("WebSocket error:", e);
+        setError("WebSocket connection error - check tunnel URL and token");
         setConnected(false);
         setConnecting(false);
       };
@@ -162,21 +277,27 @@ function ChatPage() {
         setConnected(false);
         setConnecting(false);
         if (event.code !== 1000) {
-          setError(`Disconnected: ${event.reason || "Connection closed"}`);
+          const reason = event.reason || `Code ${event.code}`;
+          if (event.code === 1008) {
+            setError(`Disconnected (${reason}): Check gateway token is correct`);
+          } else {
+            setError(`Disconnected: ${reason}`);
+          }
         }
       };
     } catch (err) {
-      setError("Failed to connect");
+      console.error("Connection error:", err);
+      setError("Failed to connect - check tunnel URL format");
       setConnecting(false);
     }
-  }, [instance, gatewayToken]);
+  }, [instance, tunnelUrl, gatewayToken]);
 
-  // Auto-connect when instance and token are available
+  // Auto-connect when tunnel URL and token are available
   useEffect(() => {
-    if (instance?.ip && gatewayToken && !connected && !connecting) {
+    if (tunnelUrl && gatewayToken && !connected && !connecting) {
       connect();
     }
-  }, [instance, gatewayToken, connect, connected, connecting]);
+  }, [tunnelUrl, gatewayToken, connect, connected, connecting]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -196,14 +317,20 @@ function ChatPage() {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const messageText = input.trim();
     setInput("");
     setLoading(true);
 
-    // Send to WebSocket
+    // Send using OpenClaw protocol: chat.send
     wsRef.current?.send(
       JSON.stringify({
-        type: "user:message",
-        content: input.trim(),
+        type: "req",
+        id: crypto.randomUUID(),
+        method: "chat.send",
+        params: {
+          message: messageText,
+          sessionKey: "main", // Use main session
+        },
       })
     );
   };
@@ -254,21 +381,36 @@ function ChatPage() {
             </div>
           </div>
           <button
-            onClick={() => setShowTokenInput(true)}
+            onClick={() => setShowConnectionModal(true)}
             className="p-2 hover:bg-gray-800 rounded-lg transition"
-            title="Settings"
+            title="Connection Settings"
           >
             <Settings className="w-5 h-5 text-gray-400" />
           </button>
         </div>
       </header>
 
-      {/* Token Input Modal */}
-      {showTokenInput && (
+      {/* Connection Modal */}
+      {showConnectionModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-md p-6">
             <h2 className="text-lg font-semibold mb-4">Connect to Instance</h2>
             <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">
+                  Tunnel URL
+                </label>
+                <input
+                  type="text"
+                  value={tunnelUrl}
+                  onChange={(e) => setTunnelUrl(e.target.value)}
+                  placeholder="https://xxx.trycloudflare.com"
+                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none font-mono text-sm"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  The Cloudflare Tunnel URL for this instance (HTTPS required).
+                </p>
+              </div>
               <div>
                 <label className="block text-sm text-gray-400 mb-2">
                   Gateway Token
@@ -284,19 +426,32 @@ function ChatPage() {
                   The token was displayed when the instance was created.
                 </p>
               </div>
+              {connectionInfo && (
+                <div className="text-xs text-gray-500 p-2 bg-gray-800/50 rounded">
+                  {connectionInfo.tunnel?.url && (
+                    <div>✓ Tunnel URL auto-loaded</div>
+                  )}
+                  {connectionInfo.gateway?.token && (
+                    <div>✓ Gateway token auto-loaded</div>
+                  )}
+                  {!connectionInfo.tunnel?.url && !connectionInfo.gateway?.token && (
+                    <div>No stored connection info found. Enter manually.</div>
+                  )}
+                </div>
+              )}
               <div className="flex gap-3">
                 <button
-                  onClick={() => setShowTokenInput(false)}
+                  onClick={() => setShowConnectionModal(false)}
                   className="flex-1 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => {
-                    setShowTokenInput(false);
+                    setShowConnectionModal(false);
                     connect();
                   }}
-                  disabled={!gatewayToken}
+                  disabled={!tunnelUrl || !gatewayToken}
                   className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg transition disabled:opacity-50"
                 >
                   Connect
