@@ -271,6 +271,7 @@ function LoginScreen({ adminToken, setAdminToken, onLogin }: { adminToken: strin
 // Vault Tab
 function VaultTab({ entries, adminToken, onRefresh }: { entries: VaultEntry[]; adminToken: string; onRefresh: () => void }) {
   const [showCreate, setShowCreate] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<VaultEntry | null>(null);
 
   // Group entries by service
   const byService = entries.reduce((acc, entry) => {
@@ -296,6 +297,7 @@ function VaultTab({ entries, adminToken, onRefresh }: { entries: VaultEntry[]; a
       </div>
 
       {showCreate && <VaultForm adminToken={adminToken} onClose={() => setShowCreate(false)} onSaved={() => { setShowCreate(false); onRefresh(); }} />}
+      {editingEntry && <VaultForm adminToken={adminToken} editEntry={editingEntry} onClose={() => setEditingEntry(null)} onSaved={() => { setEditingEntry(null); onRefresh(); }} />}
 
       <div className="space-y-6">
         {Object.entries(byService).map(([service, serviceEntries]) => (
@@ -306,7 +308,7 @@ function VaultTab({ entries, adminToken, onRefresh }: { entries: VaultEntry[]; a
             </div>
             <div className="divide-y divide-gray-800">
               {serviceEntries.map((entry) => (
-                <VaultEntryRow key={entry.ref} entry={entry} adminToken={adminToken} onDeleted={onRefresh} />
+                <VaultEntryRow key={entry.ref} entry={entry} adminToken={adminToken} onDeleted={onRefresh} onEdit={() => setEditingEntry(entry)} />
               ))}
             </div>
           </div>
@@ -319,7 +321,7 @@ function VaultTab({ entries, adminToken, onRefresh }: { entries: VaultEntry[]; a
   );
 }
 
-function VaultEntryRow({ entry, adminToken, onDeleted }: { entry: VaultEntry; adminToken: string; onDeleted: () => void }) {
+function VaultEntryRow({ entry, adminToken, onDeleted, onEdit }: { entry: VaultEntry; adminToken: string; onDeleted: () => void; onEdit: () => void }) {
   const [deleting, setDeleting] = useState(false);
 
   const handleDelete = async () => {
@@ -343,23 +345,30 @@ function VaultEntryRow({ entry, adminToken, onDeleted }: { entry: VaultEntry; ad
         <div className="font-medium">{entry.name}</div>
         <div className="text-sm text-gray-400">
           {entry.ref} • {entry.fields.join(", ")}
+          {entry.description && <span className="ml-2">• {entry.description}</span>}
         </div>
       </div>
-      <button onClick={handleDelete} disabled={deleting} className="p-2 hover:bg-gray-800 rounded text-gray-400 hover:text-red-400">
-        <Trash2 className="w-4 h-4" />
-      </button>
+      <div className="flex items-center gap-1">
+        <button onClick={onEdit} className="p-2 hover:bg-gray-800 rounded text-gray-400 hover:text-white">
+          <Edit className="w-4 h-4" />
+        </button>
+        <button onClick={handleDelete} disabled={deleting} className="p-2 hover:bg-gray-800 rounded text-gray-400 hover:text-red-400">
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 }
 
-function VaultForm({ adminToken, onClose, onSaved }: { adminToken: string; onClose: () => void; onSaved: () => void }) {
-  const [service, setService] = useState<keyof typeof VAULT_SERVICES>("anthropic");
-  const [name, setName] = useState("default");
+function VaultForm({ adminToken, onClose, onSaved, editEntry }: { adminToken: string; onClose: () => void; onSaved: () => void; editEntry?: VaultEntry }) {
+  const [service, setService] = useState<keyof typeof VAULT_SERVICES>(editEntry?.service as keyof typeof VAULT_SERVICES || "anthropic");
+  const [name, setName] = useState(editEntry?.name || "default");
   const [values, setValues] = useState<Record<string, string>>({});
-  const [description, setDescription] = useState("");
+  const [description, setDescription] = useState(editEntry?.description || "");
   const [saving, setSaving] = useState(false);
   const [showSecrets, setShowSecrets] = useState(false);
-
+  
+  const isEditing = !!editEntry;
   const serviceConfig = VAULT_SERVICES[service];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -403,13 +412,19 @@ function VaultForm({ adminToken, onClose, onSaved }: { adminToken: string; onClo
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-lg">
         <div className="p-6 border-b border-gray-800 flex items-center justify-between">
-          <h2 className="text-xl font-bold">Add Secret</h2>
+          <h2 className="text-xl font-bold">{isEditing ? "Edit Secret" : "Add Secret"}</h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-800 rounded-lg">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {isEditing && (
+            <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-400 text-sm">
+              Editing <strong>{editEntry.ref}</strong>. Leave fields blank to keep existing values.
+            </div>
+          )}
+          
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm text-gray-400 mb-1">Service</label>
@@ -417,6 +432,7 @@ function VaultForm({ adminToken, onClose, onSaved }: { adminToken: string; onClo
                 value={service}
                 onChange={(e) => { setService(e.target.value as any); setValues({}); }}
                 className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+                disabled={isEditing}
               >
                 {Object.entries(VAULT_SERVICES).map(([key, config]) => (
                   <option key={key} value={key}>{config.label}</option>
@@ -431,6 +447,7 @@ function VaultForm({ adminToken, onClose, onSaved }: { adminToken: string; onClo
                 onChange={(e) => setName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
                 className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg"
                 placeholder="default"
+                disabled={isEditing}
               />
             </div>
           </div>
@@ -473,7 +490,7 @@ function VaultForm({ adminToken, onClose, onSaved }: { adminToken: string; onClo
               Cancel
             </button>
             <button type="submit" disabled={saving || !name} className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 rounded-lg">
-              {saving ? "Saving..." : "Save Secret"}
+              {saving ? "Saving..." : isEditing ? "Update Secret" : "Save Secret"}
             </button>
           </div>
         </form>
@@ -928,7 +945,29 @@ function GitHubForm({
   );
 }
 
-// Instances Tab
+// Instances Tab with Registry + Secret Management
+interface RegisteredInstance {
+  id: string;
+  name: string;
+  gateway_url: string;
+  provider: string | null;
+  region: string | null;
+  email: string | null;
+  status: string;
+  last_seen_at: string | null;
+  created_at: string;
+}
+
+interface InstanceSecret {
+  ref: string;
+  service?: string;
+  name?: string;
+  fields?: string[];
+  assignedAt?: string;
+  pushedAt?: string | null;
+  missing?: boolean;
+}
+
 function InstancesTab({
   instances,
   vaultEntries,
@@ -940,61 +979,33 @@ function InstancesTab({
   adminToken: string;
   onRefresh: () => void;
 }) {
-  const [showDeploy, setShowDeploy] = useState(false);
-  const [deployForm, setDeployForm] = useState({
-    name: "",
-    secrets: [] as string[],
-    provider: "hetzner",
-    serverType: "cax11",  // ARM default - best value
-  });
-  const [deploying, setDeploying] = useState(false);
+  const [registeredInstances, setRegisteredInstances] = useState<RegisteredInstance[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [managingSecrets, setManagingSecrets] = useState<RegisteredInstance | null>(null);
+  
+  // Load registered instances
+  useEffect(() => {
+    fetch(`${DEPLOY_API}/registry`)
+      .then(r => r.json())
+      .then(data => {
+        setRegisteredInstances(data.instances || []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
-  const SERVER_TYPES = {
-    hetzner: [
-      { value: "cax11", label: "cax11 ARM (2 vCPU, 4GB) €3.85/mo ⭐" },
-      { value: "cx22", label: "cx22 (2 vCPU, 4GB) €4.51/mo" },
-      { value: "cax21", label: "cax21 ARM (4 vCPU, 8GB) €6.49/mo" },
-      { value: "cx32", label: "cx32 (4 vCPU, 8GB) €8.21/mo" },
-    ],
-    aws: [
-      { value: "t4g.small", label: "t4g.small ARM (2 vCPU, 2GB) ~$12/mo" },
-      { value: "t4g.medium", label: "t4g.medium ARM (2 vCPU, 4GB) ~$24/mo ⭐" },
-      { value: "t4g.large", label: "t4g.large ARM (2 vCPU, 8GB) ~$49/mo" },
-      { value: "c7g.medium", label: "c7g.medium ARM (1 vCPU, 2GB) ~$29/mo" },
-      { value: "c7g.large", label: "c7g.large ARM (2 vCPU, 4GB) ~$58/mo" },
-    ],
-  };
-
-  const handleDeploy = async () => {
-    if (!deployForm.name) return;
-    setDeploying(true);
-
-    try {
-      const res = await fetch(`${DEPLOY_API}/instances`, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "X-Cloud-Provider": deployForm.provider,
-        },
-        body: JSON.stringify({
-          name: deployForm.name,
-          secrets: deployForm.secrets,
-          serverType: deployForm.serverType,
-        }),
-      });
-
-      if (res.ok) {
-        setShowDeploy(false);
-        setDeployForm({ name: "", secrets: [], provider: "hetzner", serverType: "cax11" });
-        onRefresh();
-      } else {
-        const data = await res.json();
-        alert(data.error || "Failed to deploy");
-      }
-    } catch (e) {
-      alert("Failed to deploy instance");
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case "running":
+      case "active":
+      case "healthy":
+        return "bg-green-400";
+      case "stopped":
+      case "off":
+        return "bg-yellow-400";
+      default:
+        return "bg-gray-500";
     }
-    setDeploying(false);
   };
 
   return (
@@ -1002,109 +1013,341 @@ function InstancesTab({
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold">Instances</h2>
-          <p className="text-gray-400">Running agent instances</p>
+          <p className="text-gray-400">Registered agent instances</p>
         </div>
-        <button onClick={() => setShowDeploy(true)} className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg">
-          <Plus className="w-4 h-4" />
-          Deploy Agent
+        <button onClick={onRefresh} className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg">
+          <RefreshCw className="w-4 h-4" />
+          Refresh
         </button>
       </div>
 
-      {showDeploy && (
-        <div className="mb-6 p-4 bg-gray-900 border border-gray-800 rounded-xl">
-          <h3 className="font-semibold mb-4">Deploy New Agent</h3>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Instance Name</label>
-              <input
-                type="text"
-                value={deployForm.name}
-                onChange={(e) => setDeployForm({ ...deployForm, name: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg"
-                placeholder="dottie"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Cloud Provider</label>
-              <select
-                value={deployForm.provider}
-                onChange={(e) => {
-                  const provider = e.target.value as "hetzner" | "aws";
-                  // Default to recommended instance for each provider
-                  const defaultType = provider === "aws" ? "t4g.medium" : "cax11";
-                  setDeployForm({ 
-                    ...deployForm, 
-                    provider, 
-                    serverType: defaultType 
-                  });
-                }}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg"
-              >
-                <option value="hetzner">Hetzner Cloud</option>
-                <option value="aws">AWS EC2</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Server Type</label>
-              <select
-                value={deployForm.serverType}
-                onChange={(e) => setDeployForm({ ...deployForm, serverType: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg"
-              >
-                {SERVER_TYPES[deployForm.provider as "hetzner" | "aws"].map((type) => (
-                  <option key={type.value} value={type.value}>{type.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="mt-4">
-            <label className="block text-sm text-gray-400 mb-2">Secrets (select from vault)</label>
-            <div className="flex flex-wrap gap-2">
-              {vaultEntries.map((entry) => (
-                <label key={entry.ref} className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={deployForm.secrets.includes(entry.ref)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setDeployForm({ ...deployForm, secrets: [...deployForm.secrets, entry.ref] });
-                      } else {
-                        setDeployForm({ ...deployForm, secrets: deployForm.secrets.filter((s) => s !== entry.ref) });
-                      }
-                    }}
-                    className="rounded"
-                  />
-                  <span className="text-sm">{entry.ref}</span>
-                </label>
-              ))}
-              {vaultEntries.length === 0 && <span className="text-gray-500 text-sm">No secrets in vault</span>}
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 mt-4">
-            <button onClick={() => setShowDeploy(false)} className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg">
-              Cancel
-            </button>
-            <button onClick={handleDeploy} disabled={deploying || !deployForm.name} className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 rounded-lg">
-              {deploying ? "Deploying..." : "Deploy"}
-            </button>
-          </div>
-        </div>
+      {managingSecrets && (
+        <InstanceSecretsModal
+          instance={managingSecrets}
+          vaultEntries={vaultEntries}
+          adminToken={adminToken}
+          onClose={() => setManagingSecrets(null)}
+        />
       )}
 
-      <div className="grid gap-4">
-        {instances.map((instance) => (
-          <div key={instance.id} className="p-4 bg-gray-900 border border-gray-800 rounded-xl flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className={`w-3 h-3 rounded-full ${instance.status === "running" ? "bg-green-400" : "bg-gray-500"}`} />
+      {loading ? (
+        <div className="text-center py-12 text-gray-500">Loading...</div>
+      ) : registeredInstances.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">
+          No registered instances. Deploy one from the Instances page.
+        </div>
+      ) : (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="text-left text-gray-400 text-sm border-b border-gray-800">
+                <th className="px-4 py-3 font-medium">Name</th>
+                <th className="px-4 py-3 font-medium">Gateway</th>
+                <th className="px-4 py-3 font-medium">Provider</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Last Seen</th>
+                <th className="px-4 py-3 font-medium"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {registeredInstances.map((instance) => (
+                <tr key={instance.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
+                  <td className="px-4 py-3">
+                    <div className="font-medium">{instance.name}</div>
+                    {instance.email && <div className="text-xs text-gray-400">{instance.email}</div>}
+                  </td>
+                  <td className="px-4 py-3">
+                    <a
+                      href={instance.gateway_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-purple-400 hover:text-purple-300 text-sm flex items-center gap-1"
+                    >
+                      {instance.gateway_url.replace("https://", "").split("/")[0]}
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-400">
+                    {instance.provider || "-"}
+                    {instance.region && <span className="ml-1">({instance.region})</span>}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${getStatusColor(instance.status)}`} />
+                      <span className="text-sm capitalize">{instance.status}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-400">
+                    {instance.last_seen_at 
+                      ? new Date(instance.last_seen_at).toLocaleString() 
+                      : "Never"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => setManagingSecrets(instance)}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm"
+                    >
+                      <Key className="w-3 h-3" />
+                      Secrets
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Instance Secrets Modal
+function InstanceSecretsModal({
+  instance,
+  vaultEntries,
+  adminToken,
+  onClose,
+}: {
+  instance: RegisteredInstance;
+  vaultEntries: VaultEntry[];
+  adminToken: string;
+  onClose: () => void;
+}) {
+  const [assignedSecrets, setAssignedSecrets] = useState<InstanceSecret[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [pushing, setPushing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const fetchAssigned = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${DEPLOY_API}/registry/${instance.id}/secrets`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAssignedSecrets(data.secrets || []);
+      }
+    } catch (e) {
+      setError("Failed to load secrets");
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchAssigned();
+  }, [instance.id]);
+
+  const isAssigned = (ref: string) => assignedSecrets.some((s) => s.ref === ref);
+
+  const toggleSecret = async (ref: string) => {
+    setError(null);
+    setSuccess(null);
+
+    if (isAssigned(ref)) {
+      // Remove
+      const res = await fetch(`${DEPLOY_API}/registry/${instance.id}/secrets/${ref}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || "Failed to remove");
+        return;
+      }
+      setAssignedSecrets((prev) => prev.filter((s) => s.ref !== ref));
+    } else {
+      // Add
+      const res = await fetch(`${DEPLOY_API}/registry/${instance.id}/secrets`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+        body: JSON.stringify({ ref }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || "Failed to assign");
+        return;
+      }
+      fetchAssigned();
+    }
+  };
+
+  const pushSecrets = async () => {
+    setPushing(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const res = await fetch(`${DEPLOY_API}/registry/${instance.id}/secrets/push`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to push");
+        return;
+      }
+      setSuccess(`Pushed ${data.pushed?.length || 0} secret(s) to ${instance.name}. Gateway will restart.`);
+      fetchAssigned();
+    } catch (e) {
+      setError("Failed to push secrets");
+    }
+    setPushing(false);
+  };
+
+  const getServiceIcon = (service: string) => {
+    const icons: Record<string, string> = {
+      github: "🐙",
+      anthropic: "🤖",
+      openai: "🧠",
+      telegram: "📱",
+      "fal-ai": "🎨",
+      runpod: "🚀",
+      huggingface: "🤗",
+      moonshot: "🌙",
+    };
+    return icons[service] || "🔑";
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-2xl max-h-[80vh] flex flex-col">
+        <div className="p-6 border-b border-gray-800 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <Key className="w-5 h-5 text-purple-400" />
+              Manage Secrets
+            </h2>
+            <p className="text-gray-400 text-sm mt-1">{instance.name}</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-800 rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {error && (
+          <div className="px-6 py-3 bg-red-500/10 border-b border-red-500/20 text-red-400 text-sm">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="px-6 py-3 bg-green-500/10 border-b border-green-500/20 text-green-400 text-sm">
+            {success}
+          </div>
+        )}
+
+        <div className="flex-1 overflow-y-auto p-6">
+          {loading ? (
+            <div className="text-center py-8 text-gray-400">Loading...</div>
+          ) : (
+            <div className="space-y-6">
+              {/* Assigned Secrets */}
               <div>
-                <h3 className="font-semibold">{instance.name}</h3>
-                <p className="text-sm text-gray-400">{instance.ip || "No IP"} • {instance.provider}</p>
+                <h3 className="text-sm font-medium text-gray-400 mb-3 flex items-center gap-2">
+                  <Check className="w-4 h-4 text-green-400" />
+                  Assigned Secrets ({assignedSecrets.length})
+                </h3>
+                {assignedSecrets.length === 0 ? (
+                  <p className="text-gray-500 text-sm">No secrets assigned yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {assignedSecrets.map((secret) => (
+                      <div
+                        key={secret.ref}
+                        className="flex items-center justify-between p-3 bg-green-500/10 border border-green-500/20 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg">{getServiceIcon(secret.service || "")}</span>
+                          <div>
+                            <div className="font-medium text-sm">{secret.ref}</div>
+                            <div className="text-xs text-gray-400">
+                              {secret.fields?.join(", ")}
+                              {secret.pushedAt && (
+                                <span className="ml-2 text-green-400">
+                                  • Pushed {new Date(secret.pushedAt).toLocaleDateString()}
+                                </span>
+                              )}
+                              {secret.missing && (
+                                <span className="ml-2 text-red-400">• Missing from vault</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => toggleSecret(secret.ref)}
+                          className="p-1.5 text-red-400 hover:bg-red-500/20 rounded"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Available Secrets */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-400 mb-3">
+                  Available Secrets
+                </h3>
+                <div className="space-y-2">
+                  {vaultEntries
+                    .filter((e) => !isAssigned(e.ref))
+                    .map((entry) => (
+                      <div
+                        key={entry.ref}
+                        className="flex items-center justify-between p-3 bg-gray-800/50 border border-gray-700/50 rounded-lg hover:border-gray-600"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg">{getServiceIcon(entry.service)}</span>
+                          <div>
+                            <div className="font-medium text-sm">{entry.ref}</div>
+                            <div className="text-xs text-gray-400">
+                              {entry.fields.join(", ")}
+                              {entry.description && <span className="ml-2">• {entry.description}</span>}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => toggleSecret(entry.ref)}
+                          className="p-1.5 text-green-400 hover:bg-green-500/20 rounded"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  {vaultEntries.filter((e) => !isAssigned(e.ref)).length === 0 && (
+                    <p className="text-gray-500 text-sm">All secrets are assigned</p>
+                  )}
+                </div>
               </div>
             </div>
-            <span className="px-2 py-1 text-xs bg-gray-800 rounded capitalize">{instance.status}</span>
-          </div>
-        ))}
-        {instances.length === 0 && <div className="text-center py-12 text-gray-500">No instances running</div>}
+          )}
+        </div>
+
+        <div className="p-6 border-t border-gray-800 flex gap-3">
+          <button onClick={onClose} className="flex-1 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg">
+            Close
+          </button>
+          <button
+            onClick={pushSecrets}
+            disabled={pushing || assignedSecrets.length === 0}
+            className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 rounded-lg flex items-center justify-center gap-2"
+          >
+            {pushing ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Pushing...
+              </>
+            ) : (
+              <>
+                <ExternalLink className="w-4 h-4" />
+                Push to Instance
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
