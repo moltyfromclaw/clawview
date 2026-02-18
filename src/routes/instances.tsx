@@ -75,6 +75,24 @@ interface Instance {
   provider: string;
 }
 
+// Registry instance (from /registry API)
+interface RegisteredInstance {
+  id: string;
+  name: string;
+  gateway_url: string;
+  gateway_token?: string;
+  provider: string | null;
+  provider_instance_id: string | null;
+  region: string | null;
+  tunnel_id: string | null;
+  tunnel_url: string | null;
+  email: string | null;
+  status: string;
+  last_seen_at: string | null;
+  created_at: string;
+  metadata: Record<string, any> | null;
+}
+
 interface CreateInstanceForm {
   name: string;
   provider: "aws" | "hetzner";
@@ -121,11 +139,13 @@ function InstancesPage() {
   const { user } = useSafeUser();
   
   const [instances, setInstances] = useState<Instance[]>([]);
+  const [registeredInstances, setRegisteredInstances] = useState<RegisteredInstance[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"registry" | "provider">("registry");
 
   const [form, setForm] = useState<CreateInstanceForm>({
     name: "",
@@ -141,7 +161,14 @@ function InstancesPage() {
 
   const fetchInstances = async () => {
     try {
-      // Fetch from both providers
+      // Fetch from registry (primary source for observability)
+      const registryRes = await fetch(`${DEPLOY_API}/registry`);
+      if (registryRes.ok) {
+        const data = await registryRes.json();
+        setRegisteredInstances(data.instances || []);
+      }
+
+      // Also fetch from cloud providers for live status
       const [awsRes, hetznerRes] = await Promise.allSettled([
         fetch(`${DEPLOY_API}/instances?provider=aws`),
         fetch(`${DEPLOY_API}/instances?provider=hetzner`),
@@ -337,15 +364,48 @@ function InstancesPage() {
           </div>
         )}
 
+        {/* View Toggle */}
+        <div className="flex items-center gap-4 mb-6">
+          <div className="flex bg-gray-800/50 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode("registry")}
+              className={`px-4 py-2 rounded-md text-sm transition ${
+                viewMode === "registry"
+                  ? "bg-purple-600 text-white"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Registry ({registeredInstances.length})
+            </button>
+            <button
+              onClick={() => setViewMode("provider")}
+              className={`px-4 py-2 rounded-md text-sm transition ${
+                viewMode === "provider"
+                  ? "bg-purple-600 text-white"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Cloud Providers ({instances.length})
+            </button>
+          </div>
+          <button
+            onClick={fetchInstances}
+            className="p-2 text-gray-400 hover:text-white transition"
+            title="Refresh"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </button>
+        </div>
+
         {/* Instance Grid */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
           </div>
-        ) : instances.length === 0 ? (
+        ) : viewMode === "registry" && registeredInstances.length === 0 ? (
           <div className="text-center py-20">
             <Server className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-400 mb-2">No instances yet</h2>
+            <h2 className="text-xl font-semibold text-gray-400 mb-2">No registered instances</h2>
             <p className="text-gray-500 mb-6">Deploy your first OpenClaw instance to get started</p>
             <button
               onClick={() => setShowCreate(true)}
@@ -353,6 +413,103 @@ function InstancesPage() {
             >
               Deploy Instance
             </button>
+          </div>
+        ) : viewMode === "provider" && instances.length === 0 ? (
+          <div className="text-center py-20">
+            <Server className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-400 mb-2">No cloud instances</h2>
+            <p className="text-gray-500 mb-6">Deploy your first OpenClaw instance to get started</p>
+            <button
+              onClick={() => setShowCreate(true)}
+              className="px-6 py-3 bg-purple-600 hover:bg-purple-500 rounded-lg transition"
+            >
+              Deploy Instance
+            </button>
+          </div>
+        ) : viewMode === "registry" ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {registeredInstances.map((instance) => (
+              <div
+                key={instance.id}
+                className="bg-gray-900/50 border border-gray-800/50 rounded-xl p-5 hover:border-gray-700/50 transition"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="font-semibold text-lg">{instance.name}</h3>
+                    <div className="flex items-center gap-2 mt-1 text-sm text-gray-400">
+                      {getStatusIcon(instance.status)}
+                      <span className={getStatusColor(instance.status)}>
+                        {instance.status}
+                      </span>
+                      {instance.provider && (
+                        <>
+                          <span className="text-gray-600">•</span>
+                          <span className="uppercase text-xs font-medium px-2 py-0.5 bg-gray-800 rounded">
+                            {instance.provider}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <Server className="w-5 h-5 text-gray-600" />
+                </div>
+
+                <div className="space-y-2 text-sm text-gray-400 mb-4">
+                  <div className="flex justify-between">
+                    <span>Gateway</span>
+                    <a
+                      href={instance.gateway_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-purple-400 hover:text-purple-300 flex items-center gap-1"
+                    >
+                      {instance.gateway_url.replace("https://", "").split("/")[0]}
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                  {instance.email && (
+                    <div className="flex justify-between">
+                      <span>Email</span>
+                      <span className="text-gray-300">{instance.email}</span>
+                    </div>
+                  )}
+                  {instance.region && (
+                    <div className="flex justify-between">
+                      <span>Region</span>
+                      <span className="text-gray-300">{instance.region}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span>Last Seen</span>
+                    <span className="text-gray-300">
+                      {instance.last_seen_at
+                        ? new Date(instance.last_seen_at).toLocaleString()
+                        : "Never"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 pt-4 border-t border-gray-800/50">
+                  <a
+                    href={instance.gateway_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm transition"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Open
+                  </a>
+                  <Link
+                    to={`/chat/${instance.name}`}
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm transition"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    Chat
+                  </Link>
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

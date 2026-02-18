@@ -22,3 +22,9 @@ zone_name = "hollyclaw.com"
 
 # Keep workers.dev as fallback
 # https://clawview.holly-3f6.workers.dev
+
+# D1 Database for instance registry
+[[d1_databases]]
+binding = "DB"
+database_name = "clawview-db"
+database_id = "5db3cd76-3c87-4255-9e21-e0649657ae48"

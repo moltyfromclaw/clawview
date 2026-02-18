@@ -24,11 +24,13 @@ import { Route as ApiTasksRouteImport } from './routes/api/tasks'
 import { Route as ApiStatsProxyRouteImport } from './routes/api/stats-proxy'
 import { Route as ApiStatsRouteImport } from './routes/api/stats'
 import { Route as ApiSpawnRouteImport } from './routes/api/spawn'
+import { Route as ApiInstancesRouteImport } from './routes/api/instances'
 import { Route as ApiInsightsRouteImport } from './routes/api/insights'
 import { Route as ApiGatewayProxyRouteImport } from './routes/api/gateway-proxy'
 import { Route as ApiAgentsRouteImport } from './routes/api/agents'
 import { Route as ApiTasksTaskIdRouteImport } from './routes/api/tasks.$taskId'
 import { Route as ApiRealtimeSessionRouteImport } from './routes/api/realtime/session'
+import { Route as ApiInstancesIdRouteImport } from './routes/api/instances.$id'
 
 const StandupRoute = StandupRouteImport.update({
   id: '/standup',
@@ -105,6 +107,11 @@ const ApiSpawnRoute = ApiSpawnRouteImport.update({
   path: '/api/spawn',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiInstancesRoute = ApiInstancesRouteImport.update({
+  id: '/api/instances',
+  path: '/api/instances',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiInsightsRoute = ApiInsightsRouteImport.update({
   id: '/api/insights',
   path: '/api/insights',
@@ -130,6 +137,11 @@ const ApiRealtimeSessionRoute = ApiRealtimeSessionRouteImport.update({
   path: '/api/realtime/session',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiInstancesIdRoute = ApiInstancesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiInstancesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -144,12 +156,14 @@ export interface FileRoutesByFullPath {
   '/api/agents': typeof ApiAgentsRoute
   '/api/gateway-proxy': typeof ApiGatewayProxyRoute
   '/api/insights': typeof ApiInsightsRoute
+  '/api/instances': typeof ApiInstancesRouteWithChildren
   '/api/spawn': typeof ApiSpawnRoute
   '/api/stats': typeof ApiStatsRoute
   '/api/stats-proxy': typeof ApiStatsProxyRoute
   '/api/tasks': typeof ApiTasksRouteWithChildren
   '/chat/$instanceId': typeof ChatInstanceIdRoute
   '/tasks/$taskId': typeof TasksTaskIdRoute
+  '/api/instances/$id': typeof ApiInstancesIdRoute
   '/api/realtime/session': typeof ApiRealtimeSessionRoute
   '/api/tasks/$taskId': typeof ApiTasksTaskIdRoute
 }
@@ -166,12 +180,14 @@ export interface FileRoutesByTo {
   '/api/agents': typeof ApiAgentsRoute
   '/api/gateway-proxy': typeof ApiGatewayProxyRoute
   '/api/insights': typeof ApiInsightsRoute
+  '/api/instances': typeof ApiInstancesRouteWithChildren
   '/api/spawn': typeof ApiSpawnRoute
   '/api/stats': typeof ApiStatsRoute
   '/api/stats-proxy': typeof ApiStatsProxyRoute
   '/api/tasks': typeof ApiTasksRouteWithChildren
   '/chat/$instanceId': typeof ChatInstanceIdRoute
   '/tasks/$taskId': typeof TasksTaskIdRoute
+  '/api/instances/$id': typeof ApiInstancesIdRoute
   '/api/realtime/session': typeof ApiRealtimeSessionRoute
   '/api/tasks/$taskId': typeof ApiTasksTaskIdRoute
 }
@@ -189,12 +205,14 @@ export interface FileRoutesById {
   '/api/agents': typeof ApiAgentsRoute
   '/api/gateway-proxy': typeof ApiGatewayProxyRoute
   '/api/insights': typeof ApiInsightsRoute
+  '/api/instances': typeof ApiInstancesRouteWithChildren
   '/api/spawn': typeof ApiSpawnRoute
   '/api/stats': typeof ApiStatsRoute
   '/api/stats-proxy': typeof ApiStatsProxyRoute
   '/api/tasks': typeof ApiTasksRouteWithChildren
   '/chat/$instanceId': typeof ChatInstanceIdRoute
   '/tasks/$taskId': typeof TasksTaskIdRoute
+  '/api/instances/$id': typeof ApiInstancesIdRoute
   '/api/realtime/session': typeof ApiRealtimeSessionRoute
   '/api/tasks/$taskId': typeof ApiTasksTaskIdRoute
 }
@@ -213,12 +231,14 @@ export interface FileRouteTypes {
     | '/api/agents'
     | '/api/gateway-proxy'
     | '/api/insights'
+    | '/api/instances'
     | '/api/spawn'
     | '/api/stats'
     | '/api/stats-proxy'
     | '/api/tasks'
     | '/chat/$instanceId'
     | '/tasks/$taskId'
+    | '/api/instances/$id'
     | '/api/realtime/session'
     | '/api/tasks/$taskId'
   fileRoutesByTo: FileRoutesByTo
@@ -235,12 +255,14 @@ export interface FileRouteTypes {
     | '/api/agents'
     | '/api/gateway-proxy'
     | '/api/insights'
+    | '/api/instances'
     | '/api/spawn'
     | '/api/stats'
     | '/api/stats-proxy'
     | '/api/tasks'
     | '/chat/$instanceId'
     | '/tasks/$taskId'
+    | '/api/instances/$id'
     | '/api/realtime/session'
     | '/api/tasks/$taskId'
   id:
@@ -257,12 +279,14 @@ export interface FileRouteTypes {
     | '/api/agents'
     | '/api/gateway-proxy'
     | '/api/insights'
+    | '/api/instances'
     | '/api/spawn'
     | '/api/stats'
     | '/api/stats-proxy'
     | '/api/tasks'
     | '/chat/$instanceId'
     | '/tasks/$taskId'
+    | '/api/instances/$id'
     | '/api/realtime/session'
     | '/api/tasks/$taskId'
   fileRoutesById: FileRoutesById
@@ -280,6 +304,7 @@ export interface RootRouteChildren {
   ApiAgentsRoute: typeof ApiAgentsRoute
   ApiGatewayProxyRoute: typeof ApiGatewayProxyRoute
   ApiInsightsRoute: typeof ApiInsightsRoute
+  ApiInstancesRoute: typeof ApiInstancesRouteWithChildren
   ApiSpawnRoute: typeof ApiSpawnRoute
   ApiStatsRoute: typeof ApiStatsRoute
   ApiStatsProxyRoute: typeof ApiStatsProxyRoute
@@ -396,6 +421,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSpawnRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/instances': {
+      id: '/api/instances'
+      path: '/api/instances'
+      fullPath: '/api/instances'
+      preLoaderRoute: typeof ApiInstancesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/insights': {
       id: '/api/insights'
       path: '/api/insights'
@@ -431,8 +463,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRealtimeSessionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/instances/$id': {
+      id: '/api/instances/$id'
+      path: '/$id'
+      fullPath: '/api/instances/$id'
+      preLoaderRoute: typeof ApiInstancesIdRouteImport
+      parentRoute: typeof ApiInstancesRoute
+    }
   }
 }
+
+interface ApiInstancesRouteChildren {
+  ApiInstancesIdRoute: typeof ApiInstancesIdRoute
+}
+
+const ApiInstancesRouteChildren: ApiInstancesRouteChildren = {
+  ApiInstancesIdRoute: ApiInstancesIdRoute,
+}
+
+const ApiInstancesRouteWithChildren = ApiInstancesRoute._addFileChildren(
+  ApiInstancesRouteChildren,
+)
 
 interface ApiTasksRouteChildren {
   ApiTasksTaskIdRoute: typeof ApiTasksTaskIdRoute
@@ -459,6 +510,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAgentsRoute: ApiAgentsRoute,
   ApiGatewayProxyRoute: ApiGatewayProxyRoute,
   ApiInsightsRoute: ApiInsightsRoute,
+  ApiInstancesRoute: ApiInstancesRouteWithChildren,
   ApiSpawnRoute: ApiSpawnRoute,
   ApiStatsRoute: ApiStatsRoute,
   ApiStatsProxyRoute: ApiStatsProxyRoute,
