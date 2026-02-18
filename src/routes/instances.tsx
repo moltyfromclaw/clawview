@@ -17,6 +17,11 @@ import {
   ChevronDown,
   LogIn,
   MessageSquare,
+  Key,
+  Lock,
+  Check,
+  X,
+  Upload,
 } from "lucide-react";
 
 // Check if Clerk is configured at runtime
@@ -63,6 +68,28 @@ export const Route = createFileRoute("/instances")({
 });
 
 const DEPLOY_API = "https://openclaw-deploy.holly-3f6.workers.dev";
+
+// Vault secret types
+interface VaultEntry {
+  service: string;
+  name: string;
+  ref: string;
+  fields: string[];
+  description?: string;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+interface InstanceSecret {
+  ref: string;
+  service?: string;
+  name?: string;
+  fields?: string[];
+  description?: string;
+  assignedAt?: string;
+  pushedAt?: string | null;
+  missing?: boolean;
+}
 
 interface Instance {
   id: string;
@@ -134,6 +161,336 @@ const LOCATIONS = {
   ],
 };
 
+// Secrets Management Modal
+function SecretsModal({
+  instance,
+  onClose,
+}: {
+  instance: RegisteredInstance;
+  onClose: () => void;
+}) {
+  const [vaultSecrets, setVaultSecrets] = useState<VaultEntry[]>([]);
+  const [assignedSecrets, setAssignedSecrets] = useState<InstanceSecret[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [pushing, setPushing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // Get admin token from local storage (or env)
+  const adminToken = useMemo(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("deployAdminToken") || "";
+    }
+    return "";
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Fetch all vault secrets
+      const vaultRes = await fetch(`${DEPLOY_API}/vault`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      if (vaultRes.ok) {
+        const data = await vaultRes.json();
+        setVaultSecrets(data.entries || []);
+      }
+
+      // Fetch secrets assigned to this instance
+      const assignedRes = await fetch(
+        `${DEPLOY_API}/registry/${instance.id}/secrets`,
+        { headers: { Authorization: `Bearer ${adminToken}` } }
+      );
+      if (assignedRes.ok) {
+        const data = await assignedRes.json();
+        setAssignedSecrets(data.secrets || []);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch secrets");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [instance.id, adminToken]);
+
+  const isAssigned = (ref: string) =>
+    assignedSecrets.some((s) => s.ref === ref);
+
+  const toggleSecret = async (ref: string) => {
+    setError(null);
+    setSuccess(null);
+    
+    if (isAssigned(ref)) {
+      // Remove
+      const res = await fetch(
+        `${DEPLOY_API}/registry/${instance.id}/secrets/${ref}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${adminToken}` },
+        }
+      );
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || "Failed to remove secret");
+        return;
+      }
+      setAssignedSecrets((prev) => prev.filter((s) => s.ref !== ref));
+    } else {
+      // Add
+      const res = await fetch(
+        `${DEPLOY_API}/registry/${instance.id}/secrets`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${adminToken}`,
+          },
+          body: JSON.stringify({ ref }),
+        }
+      );
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || "Failed to assign secret");
+        return;
+      }
+      // Re-fetch to get full data
+      fetchData();
+    }
+  };
+
+  const pushSecrets = async () => {
+    setPushing(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch(
+        `${DEPLOY_API}/registry/${instance.id}/secrets/push`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${adminToken}` },
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to push secrets");
+        return;
+      }
+      setSuccess(`Pushed ${data.pushed?.length || 0} secret(s) to ${instance.name}`);
+      fetchData(); // Refresh to show pushed_at timestamps
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to push secrets");
+    } finally {
+      setPushing(false);
+    }
+  };
+
+  const getServiceIcon = (service: string) => {
+    switch (service) {
+      case "github":
+        return "🐙";
+      case "anthropic":
+        return "🤖";
+      case "openai":
+        return "🧠";
+      case "telegram":
+        return "📱";
+      case "fal-ai":
+        return "🎨";
+      case "runpod":
+        return "🚀";
+      case "huggingface":
+        return "🤗";
+      default:
+        return "🔑";
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="p-6 border-b border-gray-800 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <Key className="w-5 h-5 text-purple-400" />
+              Manage Secrets
+            </h2>
+            <p className="text-gray-400 text-sm mt-1">
+              {instance.name}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 text-gray-400 hover:text-white transition"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Admin Token Input (if not set) */}
+        {!adminToken && (
+          <div className="p-4 bg-yellow-500/10 border-b border-yellow-500/20">
+            <p className="text-yellow-400 text-sm mb-2">
+              Admin token required. Set it in localStorage:
+            </p>
+            <code className="text-xs text-gray-400">
+              localStorage.setItem("deployAdminToken", "your-token")
+            </code>
+          </div>
+        )}
+
+        {/* Error/Success Messages */}
+        {error && (
+          <div className="p-4 bg-red-500/10 border-b border-red-500/20 text-red-400 text-sm">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="p-4 bg-green-500/10 border-b border-green-500/20 text-green-400 text-sm">
+            {success}
+          </div>
+        )}
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
+            </div>
+          ) : vaultSecrets.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">
+              <Lock className="w-12 h-12 mx-auto mb-4 text-gray-600" />
+              <p>No secrets in vault</p>
+              <p className="text-sm mt-2">
+                Add secrets via the API first
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {/* Assigned secrets first */}
+              {assignedSecrets.length > 0 && (
+                <div className="mb-4">
+                  <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
+                    <Check className="w-4 h-4 text-green-400" />
+                    Assigned to {instance.name}
+                  </h3>
+                  <div className="space-y-2">
+                    {assignedSecrets.map((secret) => (
+                      <div
+                        key={secret.ref}
+                        className="flex items-center justify-between p-3 bg-green-500/10 border border-green-500/20 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg">
+                            {getServiceIcon(secret.service || "")}
+                          </span>
+                          <div>
+                            <div className="font-medium text-sm">
+                              {secret.ref}
+                            </div>
+                            <div className="text-xs text-gray-400">
+                              {secret.fields?.join(", ") || ""}
+                              {secret.pushedAt && (
+                                <span className="ml-2 text-green-400">
+                                  • Pushed {new Date(secret.pushedAt).toLocaleDateString()}
+                                </span>
+                              )}
+                              {secret.missing && (
+                                <span className="ml-2 text-red-400">
+                                  • Missing from vault
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => toggleSecret(secret.ref)}
+                          className="p-1.5 text-red-400 hover:bg-red-500/20 rounded transition"
+                          title="Remove"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Available secrets */}
+              <h3 className="text-sm font-medium text-gray-400 mb-2">
+                Available Secrets
+              </h3>
+              <div className="space-y-2">
+                {vaultSecrets
+                  .filter((s) => !isAssigned(s.ref))
+                  .map((secret) => (
+                    <div
+                      key={secret.ref}
+                      className="flex items-center justify-between p-3 bg-gray-800/50 border border-gray-700/50 rounded-lg hover:border-gray-600 transition"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg">
+                          {getServiceIcon(secret.service)}
+                        </span>
+                        <div>
+                          <div className="font-medium text-sm">{secret.ref}</div>
+                          <div className="text-xs text-gray-400">
+                            {secret.fields.join(", ")}
+                            {secret.description && (
+                              <span className="ml-2">• {secret.description}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => toggleSecret(secret.ref)}
+                        className="p-1.5 text-green-400 hover:bg-green-500/20 rounded transition"
+                        title="Assign"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-6 border-t border-gray-800 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition"
+          >
+            Close
+          </button>
+          <button
+            onClick={pushSecrets}
+            disabled={pushing || assignedSecrets.length === 0}
+            className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {pushing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Pushing...
+              </>
+            ) : (
+              <>
+                <Upload className="w-4 h-4" />
+                Push to Instance
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function InstancesPage() {
   const { isSignedIn, isLoaded } = useSafeAuth();
   const { user } = useSafeUser();
@@ -146,6 +503,7 @@ function InstancesPage() {
   const [creating, setCreating] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"registry" | "provider">("registry");
+  const [secretsInstance, setSecretsInstance] = useState<RegisteredInstance | null>(null);
 
   const [form, setForm] = useState<CreateInstanceForm>({
     name: "",
@@ -507,6 +865,13 @@ function InstancesPage() {
                     <MessageSquare className="w-4 h-4" />
                     Chat
                   </Link>
+                  <button
+                    onClick={() => setSecretsInstance(instance)}
+                    className="px-3 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm transition"
+                    title="Manage Secrets"
+                  >
+                    <Key className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))}
@@ -865,6 +1230,14 @@ function InstancesPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Secrets Modal */}
+      {secretsInstance && (
+        <SecretsModal
+          instance={secretsInstance}
+          onClose={() => setSecretsInstance(null)}
+        />
       )}
     </div>
   );
