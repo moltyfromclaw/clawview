@@ -866,6 +866,12 @@ function Dashboard() {
                 ☁️ Instances
               </Link>
               <Link
+                to="/vault"
+                className="px-2.5 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg transition-colors"
+              >
+                🔐 Vault
+              </Link>
+              <Link
                 to="/setup"
                 className="px-2.5 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg transition-colors"
               >

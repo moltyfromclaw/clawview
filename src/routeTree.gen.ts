@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VaultRouteImport } from './routes/vault'
 import { Route as StandupRouteImport } from './routes/standup'
 import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as SignInRouteImport } from './routes/sign-in'
@@ -32,6 +33,11 @@ import { Route as ApiTasksTaskIdRouteImport } from './routes/api/tasks.$taskId'
 import { Route as ApiRealtimeSessionRouteImport } from './routes/api/realtime/session'
 import { Route as ApiInstancesIdRouteImport } from './routes/api/instances.$id'
 
+const VaultRoute = VaultRouteImport.update({
+  id: '/vault',
+  path: '/vault',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StandupRoute = StandupRouteImport.update({
   id: '/standup',
   path: '/standup',
@@ -153,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/standup': typeof StandupRoute
+  '/vault': typeof VaultRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/gateway-proxy': typeof ApiGatewayProxyRoute
   '/api/insights': typeof ApiInsightsRoute
@@ -177,6 +184,7 @@ export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/standup': typeof StandupRoute
+  '/vault': typeof VaultRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/gateway-proxy': typeof ApiGatewayProxyRoute
   '/api/insights': typeof ApiInsightsRoute
@@ -202,6 +210,7 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/standup': typeof StandupRoute
+  '/vault': typeof VaultRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/gateway-proxy': typeof ApiGatewayProxyRoute
   '/api/insights': typeof ApiInsightsRoute
@@ -228,6 +237,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/standup'
+    | '/vault'
     | '/api/agents'
     | '/api/gateway-proxy'
     | '/api/insights'
@@ -252,6 +262,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/standup'
+    | '/vault'
     | '/api/agents'
     | '/api/gateway-proxy'
     | '/api/insights'
@@ -276,6 +287,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/standup'
+    | '/vault'
     | '/api/agents'
     | '/api/gateway-proxy'
     | '/api/insights'
@@ -301,6 +313,7 @@ export interface RootRouteChildren {
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
   StandupRoute: typeof StandupRoute
+  VaultRoute: typeof VaultRoute
   ApiAgentsRoute: typeof ApiAgentsRoute
   ApiGatewayProxyRoute: typeof ApiGatewayProxyRoute
   ApiInsightsRoute: typeof ApiInsightsRoute
@@ -316,6 +329,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/vault': {
+      id: '/vault'
+      path: '/vault'
+      fullPath: '/vault'
+      preLoaderRoute: typeof VaultRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/standup': {
       id: '/standup'
       path: '/standup'
@@ -507,6 +527,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
   StandupRoute: StandupRoute,
+  VaultRoute: VaultRoute,
   ApiAgentsRoute: ApiAgentsRoute,
   ApiGatewayProxyRoute: ApiGatewayProxyRoute,
   ApiInsightsRoute: ApiInsightsRoute,
